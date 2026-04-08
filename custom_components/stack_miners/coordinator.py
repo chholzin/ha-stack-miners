@@ -11,6 +11,7 @@ from typing import Any
 
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
@@ -67,6 +68,8 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._mode: str = MODE_IDLE
         self._unsubscribe_grid = None
         self._evaluating: bool = False
+        # entity_id of hass-miner's miner_consumption sensor per miner (None = not found)
+        self._consumption_sensor_ids: list[str | None] = [None] * len(self._miners)
 
         # Simulation
         self._simulation_enabled: bool = bool(data.get(CONF_SIMULATION, False))
@@ -84,6 +87,28 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             state = self.hass.states.get(miner[CONF_MINER_ENTITY_ID])
             if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN, "unknown"):
                 self._miner_states[i] = state.state == "on"
+
+        # Find the hass-miner miner_consumption sensor for each miner via entity registry
+        registry = er.async_get(self.hass)
+        # Build lookup: config_entry_id -> miner_consumption entity_id
+        consumption_by_entry: dict[str, str] = {
+            reg.config_entry_id: reg.entity_id
+            for reg in registry.entities.values()
+            if reg.domain == "sensor"
+            and reg.platform == "miner"
+            and reg.unique_id
+            and reg.unique_id.endswith("-miner_consumption")
+        }
+        # Match each miner switch to its consumption sensor via shared config_entry_id
+        for i, miner in enumerate(self._miners):
+            switch_reg = registry.async_get(miner[CONF_MINER_ENTITY_ID])
+            if switch_reg and switch_reg.config_entry_id in consumption_by_entry:
+                self._consumption_sensor_ids[i] = consumption_by_entry[switch_reg.config_entry_id]
+                _LOGGER.debug(
+                    "Miner '%s' → consumption sensor: %s",
+                    miner[CONF_MINER_NAME],
+                    self._consumption_sensor_ids[i],
+                )
 
         # Register grid sensor listener
         self._unsubscribe_grid = async_track_state_change_event(
@@ -264,13 +289,28 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _update_mode(self) -> None:
         self._mode = MODE_RUNNING if any(self._miner_states) else MODE_IDLE
 
+    def _real_consumption_w(self, index: int) -> float:
+        """Return the real power draw of a miner from its hass-miner sensor.
+
+        Falls back to the configured power_w if the sensor is unavailable.
+        """
+        sensor_id = self._consumption_sensor_ids[index]
+        if sensor_id:
+            state = self.hass.states.get(sensor_id)
+            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                try:
+                    return float(state.state)
+                except ValueError:
+                    pass
+        return float(self._miners[index][CONF_MINER_POWER_W])
+
     def _build_data(self) -> dict[str, Any]:
         readings = list(self._grid_readings)
         grid_power = readings[-1] if readings else None
         surplus_avg = -statistics.mean(readings) if readings else None
         active_count = sum(self._miner_states)
         active_power = sum(
-            self._miners[i][CONF_MINER_POWER_W]
+            self._real_consumption_w(i)
             for i in range(len(self._miners))
             if self._miner_states[i]
         )
