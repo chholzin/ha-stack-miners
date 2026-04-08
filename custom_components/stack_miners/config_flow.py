@@ -25,6 +25,8 @@ from .const import (
     CONF_MINER_ENTITY_ID,
     CONF_MINER_NAME,
     CONF_MINER_POWER_W,
+    CONF_MINER_PRIORITY,
+    CONF_MINER_PRIORITY_INTERNAL,
     CONF_MINERS,
     CONF_MIN_OFF_TIME,
     CONF_MIN_ON_TIME,
@@ -130,7 +132,7 @@ def _miner_schema(name_default: str, idx: int, total: int, power_default: int = 
             vol.Required(CONF_MINER_POWER_W, default=power_default): NumberSelector(
                 NumberSelectorConfig(min=1, max=50000, step=10, unit_of_measurement="W", mode=NumberSelectorMode.BOX)
             ),
-            vol.Required("priority", default=idx): NumberSelector(
+            vol.Required(CONF_MINER_PRIORITY, default=idx): NumberSelector(
                 NumberSelectorConfig(min=1, max=total, step=1, mode=NumberSelectorMode.BOX)
             ),
         }
@@ -155,6 +157,8 @@ class StackMinersConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     # Step 1: grid sensor + settings
     async def async_step_user(self, user_input: dict | None = None):
+        await self.async_set_unique_id(DOMAIN)
+        self._async_abort_if_unique_id_configured()
         if user_input is not None:
             self._data.update(user_input)
             return await self.async_step_select_miners()
@@ -191,9 +195,9 @@ class StackMinersConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # Step 3: configure each miner (name, power, priority)
     async def async_step_configure_miner(self, user_input: dict | None = None):
         if not self._pending:
-            self._miners.sort(key=lambda m: m["_priority"])
+            self._miners.sort(key=lambda m: m[CONF_MINER_PRIORITY_INTERNAL])
             for m in self._miners:
-                m.pop("_priority")
+                m.pop(CONF_MINER_PRIORITY_INTERNAL)
             self._data[CONF_MINERS] = self._miners
             return self.async_create_entry(title="Stack Miners", data=self._data)
 
@@ -210,7 +214,7 @@ class StackMinersConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_MINER_NAME: user_input[CONF_MINER_NAME],
                     CONF_MINER_ENTITY_ID: entity_id,
                     CONF_MINER_POWER_W: int(user_input[CONF_MINER_POWER_W]),
-                    "_priority": int(user_input["priority"]),
+                    CONF_MINER_PRIORITY_INTERNAL: int(user_input[CONF_MINER_PRIORITY]),
                 }
             )
             self._pending.pop(0)
@@ -279,9 +283,9 @@ class StackMinersOptionsFlow(config_entries.OptionsFlow):
         existing_miners = {m[CONF_MINER_ENTITY_ID]: m for m in existing.get(CONF_MINERS, [])}
 
         if not self._pending:
-            self._miners.sort(key=lambda m: m["_priority"])
+            self._miners.sort(key=lambda m: m[CONF_MINER_PRIORITY_INTERNAL])
             for m in self._miners:
-                m.pop("_priority")
+                m.pop(CONF_MINER_PRIORITY_INTERNAL)
             self._data[CONF_MINERS] = self._miners
             return self.async_create_entry(title="", data=self._data)
 
@@ -300,7 +304,7 @@ class StackMinersOptionsFlow(config_entries.OptionsFlow):
                     CONF_MINER_NAME: user_input[CONF_MINER_NAME],
                     CONF_MINER_ENTITY_ID: entity_id,
                     CONF_MINER_POWER_W: int(user_input[CONF_MINER_POWER_W]),
-                    "_priority": int(user_input["priority"]),
+                    CONF_MINER_PRIORITY_INTERNAL: int(user_input[CONF_MINER_PRIORITY]),
                 }
             )
             self._pending.pop(0)

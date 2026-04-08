@@ -138,6 +138,7 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self._unsubscribe_grid:
             self._unsubscribe_grid()
             self._unsubscribe_grid = None
+        await super().async_shutdown()
 
     # ------------------------------------------------------------------
     # Master enable switch

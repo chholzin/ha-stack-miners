@@ -76,6 +76,7 @@ Für jeden ausgewählten Miner werden Name (vorausgefüllt), Leistungsaufnahme i
 | `sensor.stack_miners_surplus_power` | Gleitender Überschuss-Durchschnitt (W) |
 | `sensor.stack_miners_active_miners` | Anzahl aktiver Miner |
 | `sensor.stack_miners_active_power` | Summe aktiver Miner-Leistung (W) |
+| `sensor.stack_miners_total_hashrate` | Summierte Hashrate aller aktiven Miner (TH/s) |
 | `sensor.stack_miners_mode` | Regler-Modus: `idle` / `running` |
 | `switch.stack_miners_auto_control` | Automatische Steuerung ein/aus |
 | `switch.stack_miners_simulation` | Simulationsmodus ein/aus *(optional)* |
@@ -189,6 +190,7 @@ For each selected miner, set the name (pre-filled), power consumption in watts, 
 | `sensor.stack_miners_surplus_power` | Rolling average surplus power (W) |
 | `sensor.stack_miners_active_miners` | Number of active miners |
 | `sensor.stack_miners_active_power` | Sum of active miners' power draw (W) |
+| `sensor.stack_miners_total_hashrate` | Combined hashrate of all active miners (TH/s) |
 | `sensor.stack_miners_mode` | Controller mode: `idle` / `running` |
 | `switch.stack_miners_auto_control` | Enable / disable automatic control |
 | `switch.stack_miners_simulation` | Enable / disable simulation mode *(optional)* |

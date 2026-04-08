@@ -1,6 +1,6 @@
 {
   "domain": "stack_miners",
-  "name": "Miner Stack",
+  "name": "Stack Miners",
   "codeowners": [],
   "config_flow": true,
   "dependencies": [],

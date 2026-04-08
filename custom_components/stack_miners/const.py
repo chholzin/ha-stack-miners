@@ -18,6 +18,10 @@ CONF_MINER_POWER_W = "power_w"
 # Config key — simulation
 CONF_SIMULATION = "simulation_enabled"
 
+# Internal config flow key for miner priority (stripped before saving)
+CONF_MINER_PRIORITY = "priority"
+CONF_MINER_PRIORITY_INTERNAL = "_priority"
+
 # Defaults
 DEFAULT_HYSTERESIS_W = 100
 DEFAULT_ROLLING_SAMPLES = 5
