@@ -15,6 +15,9 @@ CONF_MINER_NAME = "name"
 CONF_MINER_ENTITY_ID = "entity_id"
 CONF_MINER_POWER_W = "power_w"
 
+# Config key — simulation
+CONF_SIMULATION = "simulation_enabled"
+
 # Defaults
 DEFAULT_HYSTERESIS_W = 100
 DEFAULT_ROLLING_SAMPLES = 5

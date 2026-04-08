@@ -9,14 +9,16 @@
           "hysteresis_w": "Hysteresis (W)",
           "rolling_samples": "Rolling average samples",
           "min_on_time_s": "Minimum ON time (s)",
-          "min_off_time_s": "Minimum OFF time (s)"
+          "min_off_time_s": "Minimum OFF time (s)",
+          "simulation_enabled": "Create simulation mode entities (switch + slider)"
         },
         "data_description": {
           "grid_sensor_entity_id": "Sensor reporting grid power in Watts (negative = surplus fed to grid, e.g. Shelly 3EM channel_power)",
           "hysteresis_w": "Buffer in Watts to avoid switching at the threshold",
           "rolling_samples": "Number of readings to average — higher = more stable but slower response",
           "min_on_time_s": "Minimum seconds a miner must stay ON before being turned off",
-          "min_off_time_s": "Minimum seconds a miner must stay OFF before being turned on"
+          "min_off_time_s": "Minimum seconds a miner must stay OFF before being turned on",
+          "simulation_enabled": "Creates a switch and a slider (0–10000 W) to simulate PV surplus. When simulation is active, real sensor readings are ignored."
         }
       },
       "select_miners": {
@@ -58,7 +60,8 @@
           "hysteresis_w": "Hysteresis (W)",
           "rolling_samples": "Rolling average samples",
           "min_on_time_s": "Minimum ON time (s)",
-          "min_off_time_s": "Minimum OFF time (s)"
+          "min_off_time_s": "Minimum OFF time (s)",
+          "simulation_enabled": "Create simulation mode entities"
         }
       },
       "select_miners": {
@@ -87,10 +90,18 @@
   },
   "entity": {
     "sensor": {
-      "grid_power": { "name": "Grid Power" },
-      "surplus_power": { "name": "Surplus Power" },
-      "active_miners": { "name": "Active Miners" },
-      "active_power": { "name": "Active Mining Power" },
+      "grid_power": {
+        "name": "Grid Power"
+      },
+      "surplus_power": {
+        "name": "Surplus Power"
+      },
+      "active_miners": {
+        "name": "Active Miners"
+      },
+      "active_power": {
+        "name": "Active Mining Power"
+      },
       "mode": {
         "name": "Controller Mode",
         "state": {
@@ -100,7 +111,17 @@
       }
     },
     "switch": {
-      "enabled": { "name": "Auto Control" }
+      "enabled": {
+        "name": "Auto Control"
+      },
+      "simulation": {
+        "name": "Simulation Active"
+      }
+    },
+    "number": {
+      "simulation_surplus": {
+        "name": "Simulated Surplus"
+      }
     }
   }
 }

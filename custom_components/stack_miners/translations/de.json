@@ -9,14 +9,16 @@
           "hysteresis_w": "Hysterese (W)",
           "rolling_samples": "Gleitender Durchschnitt (Samples)",
           "min_on_time_s": "Mindest-Einschaltdauer (s)",
-          "min_off_time_s": "Mindest-Ausschaltdauer (s)"
+          "min_off_time_s": "Mindest-Ausschaltdauer (s)",
+          "simulation_enabled": "Simulationsmodus-Entitäten erstellen (Schalter + Schieberegler)"
         },
         "data_description": {
           "grid_sensor_entity_id": "Sensor der die Netzleistung meldet (negativ = Einspeisung, z.B. Shelly 3EM channel_power)",
           "hysteresis_w": "Puffer in Watt um Schalten an der Schwelle zu vermeiden",
           "rolling_samples": "Anzahl Messwerte für den gleitenden Durchschnitt — mehr = stabiler aber träger",
           "min_on_time_s": "Mindestzeit EIN bevor ein Miner ausgeschaltet werden kann",
-          "min_off_time_s": "Mindestzeit AUS bevor ein Miner eingeschaltet werden kann"
+          "min_off_time_s": "Mindestzeit AUS bevor ein Miner eingeschaltet werden kann",
+          "simulation_enabled": "Erstellt einen Schalter und einen Schieberegler (0–10000 W) zur Simulation von PV-Überschuss. Bei aktiver Simulation werden die echten Sensor-Messwerte ignoriert."
         }
       },
       "select_miners": {
@@ -58,7 +60,8 @@
           "hysteresis_w": "Hysterese (W)",
           "rolling_samples": "Gleitender Durchschnitt (Samples)",
           "min_on_time_s": "Mindest-Einschaltdauer (s)",
-          "min_off_time_s": "Mindest-Ausschaltdauer (s)"
+          "min_off_time_s": "Mindest-Ausschaltdauer (s)",
+          "simulation_enabled": "Simulationsmodus-Entitäten erstellen"
         }
       },
       "select_miners": {
@@ -87,10 +90,18 @@
   },
   "entity": {
     "sensor": {
-      "grid_power": { "name": "Netzleistung" },
-      "surplus_power": { "name": "Überschussleistung" },
-      "active_miners": { "name": "Aktive Miner" },
-      "active_power": { "name": "Aktive Mining-Leistung" },
+      "grid_power": {
+        "name": "Netzleistung"
+      },
+      "surplus_power": {
+        "name": "Überschussleistung"
+      },
+      "active_miners": {
+        "name": "Aktive Miner"
+      },
+      "active_power": {
+        "name": "Aktive Mining-Leistung"
+      },
       "mode": {
         "name": "Regler-Modus",
         "state": {
@@ -100,7 +111,17 @@
       }
     },
     "switch": {
-      "enabled": { "name": "Automatische Steuerung" }
+      "enabled": {
+        "name": "Automatische Steuerung"
+      },
+      "simulation": {
+        "name": "Simulation aktiv"
+      }
+    },
+    "number": {
+      "simulation_surplus": {
+        "name": "Simulierter Überschuss"
+      }
     }
   }
 }

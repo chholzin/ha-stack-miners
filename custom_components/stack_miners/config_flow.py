@@ -29,6 +29,7 @@ from .const import (
     CONF_MIN_OFF_TIME,
     CONF_MIN_ON_TIME,
     CONF_ROLLING_SAMPLES,
+    CONF_SIMULATION,
     DEFAULT_HYSTERESIS_W,
     DEFAULT_MIN_OFF_TIME,
     DEFAULT_MIN_ON_TIME,
@@ -70,6 +71,7 @@ def _settings_schema(defaults: dict) -> vol.Schema:
             vol.Optional(CONF_MIN_OFF_TIME, default=defaults.get(CONF_MIN_OFF_TIME, DEFAULT_MIN_OFF_TIME)): NumberSelector(
                 NumberSelectorConfig(min=5, max=3600, step=5, unit_of_measurement="s", mode=NumberSelectorMode.BOX)
             ),
+            vol.Optional(CONF_SIMULATION, default=defaults.get(CONF_SIMULATION, False)): bool,
         }
     )
 

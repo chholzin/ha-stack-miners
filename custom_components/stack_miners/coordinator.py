@@ -24,6 +24,7 @@ from .const import (
     CONF_MIN_OFF_TIME,
     CONF_MIN_ON_TIME,
     CONF_ROLLING_SAMPLES,
+    CONF_SIMULATION,
     DOMAIN,
     MODE_IDLE,
     MODE_RUNNING,
@@ -66,6 +67,11 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._mode: str = MODE_IDLE
         self._unsubscribe_grid = None
         self._evaluating: bool = False
+
+        # Simulation
+        self._simulation_enabled: bool = bool(data.get(CONF_SIMULATION, False))
+        self._simulation_active: bool = False   # runtime toggle (the switch entity)
+        self._simulation_surplus_w: float = 0.0  # runtime value (the number entity)
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -118,6 +124,24 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.async_set_updated_data(self._build_data())
 
     # ------------------------------------------------------------------
+    # Simulation controls (called by switch/number entities)
+    # ------------------------------------------------------------------
+
+    def set_simulation_active(self, active: bool) -> None:
+        """Enable or disable simulation mode at runtime."""
+        self._simulation_active = active
+        self.async_set_updated_data(self._build_data())
+        if self._enabled and active:
+            self.hass.async_create_task(self._evaluate())
+
+    def set_simulation_surplus(self, watts: float) -> None:
+        """Update the simulated surplus value and re-evaluate."""
+        self._simulation_surplus_w = watts
+        self.async_set_updated_data(self._build_data())
+        if self._enabled and self._simulation_active:
+            self.hass.async_create_task(self._evaluate())
+
+    # ------------------------------------------------------------------
     # Grid state listener
     # ------------------------------------------------------------------
 
@@ -136,7 +160,8 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Push updated grid reading to sensor entities immediately
         self.async_set_updated_data(self._build_data())
 
-        if self._enabled and not self._evaluating:
+        # Skip evaluation when simulation is active — simulation drives decisions
+        if self._enabled and not self._evaluating and not self._simulation_active:
             self.hass.async_create_task(self._evaluate())
 
     # ------------------------------------------------------------------
@@ -154,13 +179,15 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._evaluating = False
 
     async def _evaluate_inner(self) -> None:
-        if len(self._grid_readings) < 1:
-            return
-
-        # Rolling average of grid power.
-        # Convention: negative = surplus (feeding to grid), positive = consuming.
-        avg_grid = statistics.mean(self._grid_readings)
-        surplus_w = -avg_grid  # positive when we have surplus
+        # Determine effective surplus
+        if self._simulation_active:
+            surplus_w = self._simulation_surplus_w
+        else:
+            if len(self._grid_readings) < 1:
+                return
+            # Rolling average: negative grid = surplus feeding to grid
+            avg_grid = statistics.mean(self._grid_readings)
+            surplus_w = -avg_grid
 
         now = datetime.now(tz=timezone.utc)
 
@@ -256,4 +283,7 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "enabled": self._enabled,
             "miner_states": list(self._miner_states),
             "total_miners": len(self._miners),
+            "simulation_enabled": self._simulation_enabled,
+            "simulation_active": self._simulation_active,
+            "simulation_surplus_w": self._simulation_surplus_w,
         }

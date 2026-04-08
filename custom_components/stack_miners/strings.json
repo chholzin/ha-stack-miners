@@ -16,7 +16,8 @@
           "hysteresis_w": "Puffer in Watt um Schalten an der Schwelle zu vermeiden",
           "rolling_samples": "Anzahl Messwerte für den gleitenden Durchschnitt",
           "min_on_time_s": "Mindestzeit EIN bevor ein Miner ausgeschaltet werden kann",
-          "min_off_time_s": "Mindestzeit AUS bevor ein Miner eingeschaltet werden kann"
+          "min_off_time_s": "Mindestzeit AUS bevor ein Miner eingeschaltet werden kann",
+          "simulation_enabled": "Simulationsmodus-Entitäten erstellen (Schalter + Schieberegler)"
         }
       },
       "select_miners": {
@@ -58,7 +59,8 @@
           "hysteresis_w": "Hysterese (W)",
           "rolling_samples": "Gleitender Durchschnitt (Samples)",
           "min_on_time_s": "Mindest-Einschaltdauer (s)",
-          "min_off_time_s": "Mindest-Ausschaltdauer (s)"
+          "min_off_time_s": "Mindest-Ausschaltdauer (s)",
+          "simulation_enabled": "Simulationsmodus-Entitäten erstellen"
         }
       },
       "select_miners": {
@@ -100,7 +102,11 @@
       }
     },
     "switch": {
-      "enabled": { "name": "Automatische Steuerung" }
+      "enabled": { "name": "Automatische Steuerung" },
+      "simulation": { "name": "Simulation aktiv" }
+    },
+    "number": {
+      "simulation_surplus": { "name": "Simulierter Überschuss" }
     }
   }
 }

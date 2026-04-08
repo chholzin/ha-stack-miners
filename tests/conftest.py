@@ -39,6 +39,7 @@ def _stub_ha():
     const.STATE_UNKNOWN     = "unknown"
 
     class _Platform:
+        NUMBER = "number"
         SENSOR = "sensor"
         SWITCH = "switch"
     const.Platform = _Platform
