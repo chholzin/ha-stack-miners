@@ -27,9 +27,23 @@ Die Integration überwacht einen Netz-Leistungssensor (z.B. Shelly 3EM) und scha
 
 ### Installation
 
+#### Über HACS (empfohlen)
+
+1. [HACS](https://hacs.xyz) muss installiert sein.
+2. In HA: **HACS → Integrationen → ⋮ → Benutzerdefinierte Repositories**
+3. URL eingeben: `https://github.com/chholzin/ha-stack-miners`  
+   Kategorie: **Integration**
+4. **Hinzufügen** klicken, dann die Integration „Stack Miners" in HACS suchen und installieren.
+5. Home Assistant neu starten.
+
+#### Manuell
+
 1. Den Ordner `custom_components/stack_miners` in das Verzeichnis `config/custom_components/` der Home Assistant Instanz kopieren.
 2. Home Assistant neu starten.
-3. Unter **Einstellungen → Integrationen → Integration hinzufügen** nach „Stack Miners" suchen.
+
+#### Integration einrichten
+
+Unter **Einstellungen → Integrationen → Integration hinzufügen** nach „Stack Miners" suchen.
 
 ### Konfiguration
 
@@ -114,9 +128,23 @@ The integration monitors a grid power sensor (e.g. Shelly 3EM) and switches mine
 
 ### Installation
 
+#### Via HACS (recommended)
+
+1. [HACS](https://hacs.xyz) must be installed.
+2. In HA: **HACS → Integrations → ⋮ → Custom repositories**
+3. Enter the URL: `https://github.com/chholzin/ha-stack-miners`  
+   Category: **Integration**
+4. Click **Add**, then search for "Stack Miners" in HACS and install it.
+5. Restart Home Assistant.
+
+#### Manual
+
 1. Copy the `custom_components/stack_miners` folder into the `config/custom_components/` directory of your Home Assistant instance.
 2. Restart Home Assistant.
-3. Go to **Settings → Integrations → Add Integration** and search for "Stack Miners".
+
+#### Set up the integration
+
+Go to **Settings → Integrations → Add Integration** and search for "Stack Miners".
 
 ### Configuration
 
