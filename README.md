@@ -58,6 +58,7 @@ Die Integration wird vollständig über die HA-Benutzeroberfläche konfiguriert:
 | Gleitender Durchschnitt | Anzahl Messwerte für die Mittelwertbildung | 5 |
 | Mindest-Einschaltdauer (s) | Wie lange ein Miner EIN bleiben muss | 60 s |
 | Mindest-Ausschaltdauer (s) | Wie lange ein Miner AUS bleiben muss | 60 s |
+| Simulationsmodus aktivieren | Erstellt Schalter und Schieberegler zur Simulation (optional) | Nein |
 
 **Schritt 2 — Miner auswählen**
 
@@ -77,6 +78,17 @@ Für jeden ausgewählten Miner werden Name (vorausgefüllt), Leistungsaufnahme i
 | `sensor.stack_miners_active_power` | Summe aktiver Miner-Leistung (W) |
 | `sensor.stack_miners_mode` | Regler-Modus: `idle` / `running` |
 | `switch.stack_miners_auto_control` | Automatische Steuerung ein/aus |
+| `switch.stack_miners_simulation` | Simulationsmodus ein/aus *(optional)* |
+| `number.stack_miners_simulation_surplus` | Simulierter Überschuss 0–10.000 W *(optional)* |
+
+### Simulationsmodus
+
+Wenn bei der Konfiguration die Option **Simulationsmodus aktivieren** ausgewählt wurde, stehen zwei zusätzliche Entitäten zur Verfügung:
+
+- **Schalter** (`switch.stack_miners_simulation`): Aktiviert die Simulation. Solange dieser Schalter eingeschaltet ist, ignoriert die Integration den echten Netz-Sensor vollständig.
+- **Schieberegler** (`number.stack_miners_simulation_surplus`): Stellt den simulierten PV-Überschuss in Watt ein (0–10.000 W). Jede Änderung löst sofort eine neue Schalterentscheidung aus.
+
+Dies ermöglicht es, das Schaltverhalten der Integration zu testen, ohne auf echten PV-Überschuss angewiesen zu sein.
 
 ### Schaltlogik
 
@@ -159,6 +171,7 @@ The integration is configured entirely through the HA UI:
 | Rolling average samples | Number of readings to average | 5 |
 | Minimum ON time (s) | How long a miner must stay on | 60 s |
 | Minimum OFF time (s) | How long a miner must stay off | 60 s |
+| Enable simulation mode | Creates a switch and slider for simulation (optional) | No |
 
 **Step 2 — Select miners**
 
@@ -178,6 +191,17 @@ For each selected miner, set the name (pre-filled), power consumption in watts, 
 | `sensor.stack_miners_active_power` | Sum of active miners' power draw (W) |
 | `sensor.stack_miners_mode` | Controller mode: `idle` / `running` |
 | `switch.stack_miners_auto_control` | Enable / disable automatic control |
+| `switch.stack_miners_simulation` | Enable / disable simulation mode *(optional)* |
+| `number.stack_miners_simulation_surplus` | Simulated surplus power 0–10,000 W *(optional)* |
+
+### Simulation mode
+
+If **Enable simulation mode** was selected during configuration, two additional entities are available:
+
+- **Switch** (`switch.stack_miners_simulation`): Activates simulation. While on, the integration completely ignores the real grid sensor.
+- **Slider** (`number.stack_miners_simulation_surplus`): Sets the simulated PV surplus in watts (0–10,000 W). Every change immediately triggers a new switching decision.
+
+This allows testing the integration's switching behaviour without relying on real PV surplus.
 
 ### Switching logic
 
