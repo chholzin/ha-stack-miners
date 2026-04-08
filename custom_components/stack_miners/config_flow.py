@@ -42,14 +42,47 @@ _LOGGER = logging.getLogger(__name__)
 _HASS_MINER_DOMAIN = "miner"
 
 
-def _discover_miner_switches(hass) -> list[dict[str, str]]:
-    """Return all switch entities registered by the hass-miner integration."""
+def _discover_miner_switches(hass) -> list[dict]:
+    """Return all switch entities registered by the hass-miner integration.
+
+    Each entry includes the entity_id, display name, and the current power
+    limit reported by the corresponding hass-miner power_limit sensor.
+    """
     registry = er.async_get(hass)
+
+    # Build a lookup: config_entry_id -> power_limit entity_id
+    power_limit_by_entry: dict[str, str] = {}
+    for reg_entry in registry.entities.values():
+        if (
+            reg_entry.domain == "sensor"
+            and reg_entry.platform == _HASS_MINER_DOMAIN
+            and reg_entry.unique_id
+            and reg_entry.unique_id.endswith("-power_limit")
+        ):
+            power_limit_by_entry[reg_entry.config_entry_id] = reg_entry.entity_id
+
     miners = []
-    for entry in registry.entities.values():
-        if entry.domain == "switch" and entry.platform == _HASS_MINER_DOMAIN:
-            name = entry.name or entry.original_name or entry.entity_id
-            miners.append({"entity_id": entry.entity_id, "name": name})
+    for reg_entry in registry.entities.values():
+        if reg_entry.domain == "switch" and reg_entry.platform == _HASS_MINER_DOMAIN:
+            name = reg_entry.name or reg_entry.original_name or reg_entry.entity_id
+
+            # Try to read the current power limit for this miner
+            power_w = 1000  # fallback default
+            pl_entity_id = power_limit_by_entry.get(reg_entry.config_entry_id)
+            if pl_entity_id:
+                pl_state = hass.states.get(pl_entity_id)
+                if pl_state and pl_state.state not in ("unavailable", "unknown"):
+                    try:
+                        power_w = int(float(pl_state.state))
+                    except ValueError:
+                        pass
+
+            miners.append({
+                "entity_id": reg_entry.entity_id,
+                "name": name,
+                "power_w": power_w,
+            })
+
     return sorted(miners, key=lambda m: m["name"])
 
 
@@ -133,7 +166,8 @@ class StackMinersConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not discovered:
             return self.async_abort(reason="no_miners_found")
 
-        self._discovered = {m["entity_id"]: m["name"] for m in discovered}
+        # Store full miner info (name + power_w from power_limit sensor)
+        self._discovered = {m["entity_id"]: m for m in discovered}
         options = [{"value": m["entity_id"], "label": m["name"]} for m in discovered]
 
         if user_input is not None:
@@ -164,7 +198,9 @@ class StackMinersConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_create_entry(title="Stack Miners", data=self._data)
 
         entity_id = self._pending[0]
-        name_default = self._discovered.get(entity_id, entity_id)
+        miner_info = self._discovered.get(entity_id, {})
+        name_default = miner_info.get("name", entity_id)
+        power_default = miner_info.get("power_w", 1000)
         idx = len(self._miners) + 1
         total = len(self._selected_ids)
 
@@ -182,7 +218,7 @@ class StackMinersConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="configure_miner",
-            data_schema=_miner_schema(name_default, idx, total),
+            data_schema=_miner_schema(name_default, idx, total, power_default),
             description_placeholders={
                 "count": str(idx),
                 "total": str(total),
@@ -217,7 +253,7 @@ class StackMinersOptionsFlow(config_entries.OptionsFlow):
         if not discovered:
             return self.async_abort(reason="no_miners_found")
 
-        self._discovered = {m["entity_id"]: m["name"] for m in discovered}
+        self._discovered = {m["entity_id"]: m for m in discovered}
         options = [{"value": m["entity_id"], "label": m["name"]} for m in discovered]
 
         if user_input is not None:
@@ -250,9 +286,11 @@ class StackMinersOptionsFlow(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=self._data)
 
         entity_id = self._pending[0]
+        miner_info = self._discovered.get(entity_id, {})
         prev = existing_miners.get(entity_id, {})
-        name_default = prev.get(CONF_MINER_NAME, self._discovered.get(entity_id, entity_id))
-        power_default = prev.get(CONF_MINER_POWER_W, 1000)
+        name_default = prev.get(CONF_MINER_NAME, miner_info.get("name", entity_id))
+        # Prefer previously saved value, then live power_limit sensor, then fallback
+        power_default = prev.get(CONF_MINER_POWER_W, miner_info.get("power_w", 1000))
         idx = len(self._miners) + 1
         total = len(self._selected_ids)
 
