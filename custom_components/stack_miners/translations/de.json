@@ -1,0 +1,106 @@
+{
+  "title": "Stack Miners",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Netz-Sensor & Einstellungen",
+        "data": {
+          "grid_sensor_entity_id": "Netz-Leistungssensor",
+          "hysteresis_w": "Hysterese (W)",
+          "rolling_samples": "Gleitender Durchschnitt (Samples)",
+          "min_on_time_s": "Mindest-Einschaltdauer (s)",
+          "min_off_time_s": "Mindest-Ausschaltdauer (s)"
+        },
+        "data_description": {
+          "grid_sensor_entity_id": "Sensor der die Netzleistung meldet (negativ = Einspeisung, z.B. Shelly 3EM channel_power)",
+          "hysteresis_w": "Puffer in Watt um Schalten an der Schwelle zu vermeiden",
+          "rolling_samples": "Anzahl Messwerte für den gleitenden Durchschnitt — mehr = stabiler aber träger",
+          "min_on_time_s": "Mindestzeit EIN bevor ein Miner ausgeschaltet werden kann",
+          "min_off_time_s": "Mindestzeit AUS bevor ein Miner eingeschaltet werden kann"
+        }
+      },
+      "select_miners": {
+        "title": "Miner auswählen",
+        "description": "{count} Miner über hass-miner gefunden. Bitte auswählen welche gesteuert werden sollen.",
+        "data": {
+          "selected_miners": "Miner"
+        }
+      },
+      "configure_miner": {
+        "title": "Miner {count}/{total} konfigurieren",
+        "description": "Entität: {entity_id}",
+        "data": {
+          "name": "Name",
+          "power_w": "Leistungsaufnahme (W)",
+          "priority": "Priorität (1 = höchste)"
+        },
+        "data_description": {
+          "power_w": "Nennleistung des Miners — bestimmt ab wieviel Überschuss er eingeschaltet wird",
+          "priority": "Miner mit niedrigerer Zahl werden zuerst eingeschaltet und zuletzt ausgeschaltet"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Stack Miners ist bereits konfiguriert",
+      "no_miners_found": "Keine Miner über hass-miner gefunden. Bitte zuerst Miner über die hass-miner Integration einrichten.",
+      "no_miners_selected": "Mindestens einen Miner auswählen"
+    },
+    "error": {
+      "no_miners_selected": "Bitte mindestens einen Miner auswählen"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Netz-Sensor & Einstellungen",
+        "data": {
+          "grid_sensor_entity_id": "Netz-Leistungssensor",
+          "hysteresis_w": "Hysterese (W)",
+          "rolling_samples": "Gleitender Durchschnitt (Samples)",
+          "min_on_time_s": "Mindest-Einschaltdauer (s)",
+          "min_off_time_s": "Mindest-Ausschaltdauer (s)"
+        }
+      },
+      "select_miners": {
+        "title": "Miner auswählen",
+        "description": "{count} Miner über hass-miner gefunden.",
+        "data": {
+          "selected_miners": "Miner"
+        }
+      },
+      "configure_miner": {
+        "title": "Miner {count}/{total} konfigurieren",
+        "description": "Entität: {entity_id}",
+        "data": {
+          "name": "Name",
+          "power_w": "Leistungsaufnahme (W)",
+          "priority": "Priorität (1 = höchste)"
+        }
+      }
+    },
+    "abort": {
+      "no_miners_found": "Keine Miner über hass-miner gefunden"
+    },
+    "error": {
+      "no_miners_selected": "Bitte mindestens einen Miner auswählen"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "grid_power": { "name": "Netzleistung" },
+      "surplus_power": { "name": "Überschussleistung" },
+      "active_miners": { "name": "Aktive Miner" },
+      "active_power": { "name": "Aktive Mining-Leistung" },
+      "mode": {
+        "name": "Regler-Modus",
+        "state": {
+          "idle": "Inaktiv",
+          "running": "Läuft"
+        }
+      }
+    },
+    "switch": {
+      "enabled": { "name": "Automatische Steuerung" }
+    }
+  }
+}

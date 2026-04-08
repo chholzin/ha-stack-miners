@@ -1,0 +1,11 @@
+{
+  "domain": "stack_miners",
+  "name": "Miner Stack",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/chholzin/ha-stack-miners",
+  "iot_class": "local_push",
+  "requirements": [],
+  "version": "1.0.0"
+}

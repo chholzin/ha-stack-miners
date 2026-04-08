@@ -1,0 +1,166 @@
+"""Minimal HA stubs so coordinator tests run without homeassistant installed."""
+
+import asyncio
+import sys
+import types
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+
+# ---------------------------------------------------------------------------
+# Stub the entire homeassistant package tree before any project imports
+# ---------------------------------------------------------------------------
+
+def _mod(name: str):
+    m = types.ModuleType(name)
+    sys.modules[name] = m
+    return m
+
+
+def _stub_ha():
+    ha          = _mod("homeassistant")
+    cfg         = _mod("homeassistant.config_entries")
+    core        = _mod("homeassistant.core")
+    const       = _mod("homeassistant.const")
+    helpers     = _mod("homeassistant.helpers")
+    ev          = _mod("homeassistant.helpers.event")
+    upd         = _mod("homeassistant.helpers.update_coordinator")
+    er          = _mod("homeassistant.helpers.entity_registry")
+    ent         = _mod("homeassistant.helpers.entity")
+    plat        = _mod("homeassistant.helpers.entity_platform")
+    sel         = _mod("homeassistant.helpers.selector")
+    comp        = _mod("homeassistant.components")
+    sensor_comp = _mod("homeassistant.components.sensor")
+    switch_comp = _mod("homeassistant.components.switch")
+
+    # --- homeassistant.const ---
+    const.STATE_UNAVAILABLE = "unavailable"
+    const.STATE_UNKNOWN     = "unknown"
+
+    class _Platform:
+        SENSOR = "sensor"
+        SWITCH = "switch"
+    const.Platform = _Platform
+
+    class _UoP:
+        WATT = "W"
+    const.UnitOfPower = _UoP
+
+    # --- homeassistant.core ---
+    core.callback    = lambda f: f          # passthrough decorator
+    core.HomeAssistant = MagicMock
+    core.Event         = MagicMock
+
+    # --- homeassistant.config_entries ---
+    class _ConfigEntry:
+        pass
+    class _ConfigFlow:
+        pass
+    class _OptionsFlow:
+        pass
+    cfg.ConfigEntry  = _ConfigEntry
+    cfg.ConfigFlow   = _ConfigFlow
+    cfg.OptionsFlow  = _OptionsFlow
+    cfg.HANDLERS     = {}
+
+    # --- homeassistant.helpers.event ---
+    ev.async_track_state_change_event = MagicMock(return_value=lambda: None)
+
+    # --- homeassistant.helpers.update_coordinator ---
+    class _DataUpdateCoordinatorMeta(type):
+        """Allow DataUpdateCoordinator[X] subscript syntax."""
+        def __getitem__(cls, item):
+            return cls
+
+    class _DataUpdateCoordinator(metaclass=_DataUpdateCoordinatorMeta):
+        def __init__(self, hass=None, logger=None, name=None, update_interval=None, **kw):
+            self.hass   = hass
+            self.logger = logger
+            self.name   = name
+            self.data   = None
+
+        def async_set_updated_data(self, data):
+            self.data = data
+
+        async def async_config_entry_first_refresh(self):
+            pass
+
+    class _CoordinatorEntity:
+        def __init__(self, coordinator):
+            self.coordinator = coordinator
+
+    upd.DataUpdateCoordinator = _DataUpdateCoordinator
+    upd.CoordinatorEntity     = _CoordinatorEntity
+    upd.UpdateFailed          = Exception
+
+    # --- homeassistant.helpers.entity ---
+    ent.DeviceInfo = dict
+
+    # --- homeassistant.helpers.entity_platform ---
+    plat.AddEntitiesCallback = object
+
+    # --- homeassistant.helpers.entity_registry ---
+    er.async_get = MagicMock(return_value=MagicMock())
+
+    # --- components ---
+    sensor_comp.SensorEntity = object
+    class _SSC:
+        MEASUREMENT = "measurement"
+    sensor_comp.SensorStateClass = _SSC
+    switch_comp.SwitchEntity = object
+
+    # --- selectors (not used in coordinator, stub to avoid ImportError) ---
+    for name in (
+        "EntitySelector", "EntitySelectorConfig",
+        "NumberSelector", "NumberSelectorConfig", "NumberSelectorMode",
+        "SelectSelector", "SelectSelectorConfig", "SelectSelectorMode",
+    ):
+        setattr(sel, name, MagicMock)
+
+
+_stub_ha()
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+def _fake_state(state: str = "off"):
+    s = MagicMock()
+    s.state = state
+    return s
+
+
+@pytest.fixture
+def hass():
+    """Minimal HomeAssistant mock.
+
+    states.get() returns a valid (off) state by default so the coordinator
+    doesn't skip switch calls due to a missing entity.
+    """
+    h = MagicMock()
+    h.states.get.return_value = _fake_state("off")
+    h.services.async_call = AsyncMock()
+    h.async_create_task = lambda coro: asyncio.ensure_future(coro)
+    return h
+
+
+@pytest.fixture
+def entry():
+    """Minimal ConfigEntry mock — two miners, min times = 0 for fast tests."""
+    e = MagicMock()
+    e.entry_id = "test_entry"
+    e.data = {
+        "grid_sensor_entity_id": "sensor.netzleistung_median",
+        "hysteresis_w": 100,
+        "rolling_samples": 3,
+        "min_on_time_s": 0,
+        "min_off_time_s": 0,
+        "miners": [
+            {"name": "S9",     "entity_id": "switch.miner_s9_active",     "power_w": 1400},
+            {"name": "BitAxe", "entity_id": "switch.miner_bitaxe_active", "power_w": 15},
+        ],
+    }
+    e.options = {}
+    return e

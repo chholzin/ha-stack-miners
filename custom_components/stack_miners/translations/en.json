@@ -1,0 +1,106 @@
+{
+  "title": "Stack Miners",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Grid Sensor & Settings",
+        "data": {
+          "grid_sensor_entity_id": "Grid power sensor",
+          "hysteresis_w": "Hysteresis (W)",
+          "rolling_samples": "Rolling average samples",
+          "min_on_time_s": "Minimum ON time (s)",
+          "min_off_time_s": "Minimum OFF time (s)"
+        },
+        "data_description": {
+          "grid_sensor_entity_id": "Sensor reporting grid power in Watts (negative = surplus fed to grid, e.g. Shelly 3EM channel_power)",
+          "hysteresis_w": "Buffer in Watts to avoid switching at the threshold",
+          "rolling_samples": "Number of readings to average — higher = more stable but slower response",
+          "min_on_time_s": "Minimum seconds a miner must stay ON before being turned off",
+          "min_off_time_s": "Minimum seconds a miner must stay OFF before being turned on"
+        }
+      },
+      "select_miners": {
+        "title": "Select Miners",
+        "description": "Found {count} miners via hass-miner. Select which ones should be controlled.",
+        "data": {
+          "selected_miners": "Miners"
+        }
+      },
+      "configure_miner": {
+        "title": "Configure Miner {count}/{total}",
+        "description": "Entity: {entity_id}",
+        "data": {
+          "name": "Name",
+          "power_w": "Power consumption (W)",
+          "priority": "Priority (1 = highest)"
+        },
+        "data_description": {
+          "power_w": "Rated power draw of this miner — determines how much surplus is needed to switch it on",
+          "priority": "Miners with lower priority numbers are switched on first and off last"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Stack Miners is already configured",
+      "no_miners_found": "No miners found via hass-miner. Please set up miners via the hass-miner integration first.",
+      "no_miners_selected": "At least one miner must be selected"
+    },
+    "error": {
+      "no_miners_selected": "Please select at least one miner"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Grid Sensor & Settings",
+        "data": {
+          "grid_sensor_entity_id": "Grid power sensor",
+          "hysteresis_w": "Hysteresis (W)",
+          "rolling_samples": "Rolling average samples",
+          "min_on_time_s": "Minimum ON time (s)",
+          "min_off_time_s": "Minimum OFF time (s)"
+        }
+      },
+      "select_miners": {
+        "title": "Select Miners",
+        "description": "Found {count} miners via hass-miner.",
+        "data": {
+          "selected_miners": "Miners"
+        }
+      },
+      "configure_miner": {
+        "title": "Configure Miner {count}/{total}",
+        "description": "Entity: {entity_id}",
+        "data": {
+          "name": "Name",
+          "power_w": "Power consumption (W)",
+          "priority": "Priority (1 = highest)"
+        }
+      }
+    },
+    "abort": {
+      "no_miners_found": "No miners found via hass-miner"
+    },
+    "error": {
+      "no_miners_selected": "Please select at least one miner"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "grid_power": { "name": "Grid Power" },
+      "surplus_power": { "name": "Surplus Power" },
+      "active_miners": { "name": "Active Miners" },
+      "active_power": { "name": "Active Mining Power" },
+      "mode": {
+        "name": "Controller Mode",
+        "state": {
+          "idle": "Idle",
+          "running": "Running"
+        }
+      }
+    },
+    "switch": {
+      "enabled": { "name": "Auto Control" }
+    }
+  }
+}
