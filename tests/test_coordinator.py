@@ -12,8 +12,14 @@ from custom_components.stack_miners.const import MODE_IDLE, MODE_RUNNING
 
 
 def _make_coordinator(hass, entry) -> StackMinersCoordinator:
-    coord = StackMinersCoordinator(hass, entry)
-    return coord
+    return StackMinersCoordinator(hass, entry)
+
+
+def _make_state(value: str) -> MagicMock:
+    """Return a minimal HA state mock with the given state string."""
+    s = MagicMock()
+    s.state = value
+    return s
 
 
 # ---------------------------------------------------------------------------
@@ -298,11 +304,78 @@ class TestBuildData:
         assert data["active_miners"] == 1
         assert data["total_miners"] == 2
 
-    def test_active_power_sum(self, hass, entry):
+    def test_active_power_falls_back_to_configured(self, hass, entry):
+        """No consumption sensors wired → falls back to configured power_w."""
         coord = _make_coordinator(hass, entry)
         coord._miner_states = [True, True]
+        # consumption sensors not set (None) → fallback to 1400 + 15
         data = coord._build_data()
-        assert data["active_power_w"] == 1415  # 1400 + 15
+        assert data["active_power_w"] == 1415
+
+    def test_active_power_uses_real_sensor(self, hass, entry):
+        """When consumption sensor is available its value is used."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [True, False]
+        coord._consumption_sensor_ids[0] = "sensor.miner_s9_consumption"
+
+        real_state = MagicMock()
+        real_state.state = "1320"  # real wattage differs from configured 1400
+        hass.states.get.side_effect = lambda eid: real_state if eid == "sensor.miner_s9_consumption" else MagicMock(state="off")
+
+        data = coord._build_data()
+        assert data["active_power_w"] == pytest.approx(1320.0)
+
+    def test_active_power_falls_back_when_sensor_unavailable(self, hass, entry):
+        """Unavailable consumption sensor → configured power_w is used."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [True, False]
+        coord._consumption_sensor_ids[0] = "sensor.miner_s9_consumption"
+
+        unavail = MagicMock()
+        unavail.state = "unavailable"
+        hass.states.get.side_effect = lambda eid: unavail if eid == "sensor.miner_s9_consumption" else MagicMock(state="off")
+
+        data = coord._build_data()
+        assert data["active_power_w"] == pytest.approx(1400.0)
+
+    def test_hashrate_sums_active_miners(self, hass, entry):
+        """Total hashrate sums real sensor values for active miners only."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [True, True]
+        coord._hashrate_sensor_ids[0] = "sensor.miner_s9_hashrate"
+        coord._hashrate_sensor_ids[1] = "sensor.miner_bitaxe_hashrate"
+
+        def _fake_state(eid):
+            return {"sensor.miner_s9_hashrate": "14.5", "sensor.miner_bitaxe_hashrate": "0.5"}.get(eid, "off")
+
+        real = MagicMock()
+        real.state = "x"  # overridden per entity below
+        hass.states.get.side_effect = lambda eid: _make_state(_fake_state(eid))
+
+        data = coord._build_data()
+        assert data["total_hashrate_th"] == pytest.approx(15.0)
+
+    def test_hashrate_excludes_inactive_miners(self, hass, entry):
+        """Inactive miner hashrate is not included in the sum."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [True, False]
+        coord._hashrate_sensor_ids[0] = "sensor.miner_s9_hashrate"
+        coord._hashrate_sensor_ids[1] = "sensor.miner_bitaxe_hashrate"
+
+        hass.states.get.side_effect = lambda eid: _make_state(
+            "14.5" if eid == "sensor.miner_s9_hashrate" else "0.5"
+        )
+
+        data = coord._build_data()
+        assert data["total_hashrate_th"] == pytest.approx(14.5)
+
+    def test_hashrate_zero_when_no_sensors(self, hass, entry):
+        """No hashrate sensors wired → total is 0."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [True, True]
+        # hashrate_sensor_ids stay None
+        data = coord._build_data()
+        assert data["total_hashrate_th"] == 0.0
 
     def test_enabled_flag(self, hass, entry):
         coord = _make_coordinator(hass, entry)
@@ -310,6 +383,66 @@ class TestBuildData:
         assert coord._build_data()["enabled"] is False
         coord.enable()
         assert coord._build_data()["enabled"] is True
+
+
+# ---------------------------------------------------------------------------
+# Simulation mode
+# ---------------------------------------------------------------------------
+
+class TestSimulation:
+    @pytest.mark.asyncio
+    async def test_simulation_uses_slider_value(self, hass, entry):
+        """When simulation is active, coordinator uses simulated surplus."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [False, False]
+        coord.set_simulation_active(True)
+        coord.set_simulation_surplus(1600.0)  # enough for S9 (1400 + 100)
+
+        await coord._evaluate_inner()
+
+        hass.services.async_call.assert_awaited_once_with(
+            "homeassistant", "turn_on",
+            {"entity_id": "switch.miner_s9_active"},
+            blocking=False,
+        )
+
+    @pytest.mark.asyncio
+    async def test_simulation_ignores_grid_readings(self, hass, entry):
+        """Real grid readings are ignored when simulation is active."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [False, False]
+        coord.set_simulation_active(True)
+        coord.set_simulation_surplus(0.0)  # no surplus in simulation
+
+        # Real grid shows massive surplus — must be ignored
+        for _ in range(3):
+            coord._grid_readings.append(-9000.0)
+
+        await coord._evaluate_inner()
+
+        hass.services.async_call.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_simulation_off_uses_real_sensor(self, hass, entry):
+        """With simulation off, real grid readings drive decisions."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [False, False]
+        coord.set_simulation_active(False)
+
+        for _ in range(3):
+            coord._grid_readings.append(-1600.0)
+
+        await coord._evaluate_inner()
+
+        hass.services.async_call.assert_awaited_once()
+
+    def test_simulation_state_in_build_data(self, hass, entry):
+        coord = _make_coordinator(hass, entry)
+        coord.set_simulation_active(True)
+        coord.set_simulation_surplus(2500.0)
+        data = coord._build_data()
+        assert data["simulation_active"] is True
+        assert data["simulation_surplus_w"] == pytest.approx(2500.0)
 
 
 # ---------------------------------------------------------------------------
