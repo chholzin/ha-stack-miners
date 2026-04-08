@@ -68,8 +68,9 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._mode: str = MODE_IDLE
         self._unsubscribe_grid = None
         self._evaluating: bool = False
-        # entity_id of hass-miner's miner_consumption sensor per miner (None = not found)
+        # entity_id of hass-miner's miner_consumption / hashrate sensor per miner
         self._consumption_sensor_ids: list[str | None] = [None] * len(self._miners)
+        self._hashrate_sensor_ids: list[str | None] = [None] * len(self._miners)
 
         # Simulation
         self._simulation_enabled: bool = bool(data.get(CONF_SIMULATION, False))
@@ -90,24 +91,28 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # Find the hass-miner miner_consumption sensor for each miner via entity registry
         registry = er.async_get(self.hass)
-        # Build lookup: config_entry_id -> miner_consumption entity_id
-        consumption_by_entry: dict[str, str] = {
-            reg.config_entry_id: reg.entity_id
-            for reg in registry.entities.values()
-            if reg.domain == "sensor"
-            and reg.platform == "miner"
-            and reg.unique_id
-            and reg.unique_id.endswith("-miner_consumption")
-        }
-        # Match each miner switch to its consumption sensor via shared config_entry_id
+        # Build lookups: config_entry_id -> sensor entity_id
+        consumption_by_entry: dict[str, str] = {}
+        hashrate_by_entry: dict[str, str] = {}
+        for reg in registry.entities.values():
+            if reg.domain == "sensor" and reg.platform == "miner" and reg.unique_id:
+                if reg.unique_id.endswith("-miner_consumption"):
+                    consumption_by_entry[reg.config_entry_id] = reg.entity_id
+                elif reg.unique_id.endswith("-hashrate"):
+                    hashrate_by_entry[reg.config_entry_id] = reg.entity_id
+
+        # Match each miner switch to its sensors via shared config_entry_id
         for i, miner in enumerate(self._miners):
             switch_reg = registry.async_get(miner[CONF_MINER_ENTITY_ID])
-            if switch_reg and switch_reg.config_entry_id in consumption_by_entry:
-                self._consumption_sensor_ids[i] = consumption_by_entry[switch_reg.config_entry_id]
+            if switch_reg:
+                entry_id = switch_reg.config_entry_id
+                self._consumption_sensor_ids[i] = consumption_by_entry.get(entry_id)
+                self._hashrate_sensor_ids[i] = hashrate_by_entry.get(entry_id)
                 _LOGGER.debug(
-                    "Miner '%s' → consumption sensor: %s",
+                    "Miner '%s' → consumption: %s, hashrate: %s",
                     miner[CONF_MINER_NAME],
                     self._consumption_sensor_ids[i],
+                    self._hashrate_sensor_ids[i],
                 )
 
         # Register grid sensor listener
@@ -289,20 +294,22 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _update_mode(self) -> None:
         self._mode = MODE_RUNNING if any(self._miner_states) else MODE_IDLE
 
-    def _real_consumption_w(self, index: int) -> float:
-        """Return the real power draw of a miner from its hass-miner sensor.
+    def _read_sensor_float(self, entity_id: str | None) -> float | None:
+        """Read a numeric sensor state; return None if unavailable."""
+        if entity_id is None:
+            return None
+        state = self.hass.states.get(entity_id)
+        if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            try:
+                return float(state.state)
+            except ValueError:
+                pass
+        return None
 
-        Falls back to the configured power_w if the sensor is unavailable.
-        """
-        sensor_id = self._consumption_sensor_ids[index]
-        if sensor_id:
-            state = self.hass.states.get(sensor_id)
-            if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-                try:
-                    return float(state.state)
-                except ValueError:
-                    pass
-        return float(self._miners[index][CONF_MINER_POWER_W])
+    def _real_consumption_w(self, index: int) -> float:
+        """Return actual power draw; falls back to configured power_w."""
+        v = self._read_sensor_float(self._consumption_sensor_ids[index])
+        return v if v is not None else float(self._miners[index][CONF_MINER_POWER_W])
 
     def _build_data(self) -> dict[str, Any]:
         readings = list(self._grid_readings)
@@ -314,6 +321,13 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             for i in range(len(self._miners))
             if self._miner_states[i]
         )
+        total_hashrate = sum(
+            v
+            for i in range(len(self._miners))
+            if self._miner_states[i]
+            for v in [self._read_sensor_float(self._hashrate_sensor_ids[i])]
+            if v is not None
+        )
         return {
             "grid_power": grid_power,
             "surplus_avg": surplus_avg,
@@ -323,6 +337,7 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "enabled": self._enabled,
             "miner_states": list(self._miner_states),
             "total_miners": len(self._miners),
+            "total_hashrate_th": round(total_hashrate, 2),
             "simulation_enabled": self._simulation_enabled,
             "simulation_active": self._simulation_active,
             "simulation_surplus_w": self._simulation_surplus_w,

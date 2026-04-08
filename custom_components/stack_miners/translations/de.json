@@ -102,6 +102,9 @@
       "active_power": {
         "name": "Aktive Mining-Leistung"
       },
+      "total_hashrate": {
+        "name": "Gesamt-Hashrate"
+      },
       "mode": {
         "name": "Regler-Modus",
         "state": {

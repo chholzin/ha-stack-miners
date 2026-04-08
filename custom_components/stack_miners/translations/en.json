@@ -102,6 +102,9 @@
       "active_power": {
         "name": "Active Mining Power"
       },
+      "total_hashrate": {
+        "name": "Total Hashrate"
+      },
       "mode": {
         "name": "Controller Mode",
         "state": {

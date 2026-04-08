@@ -30,6 +30,7 @@ async def async_setup_entry(
             SurplusPowerSensor(coordinator, entry),
             ActiveMinersSensor(coordinator, entry),
             ActivePowerSensor(coordinator, entry),
+            TotalHashrateSensor(coordinator, entry),
             ModeStateSensor(coordinator, entry),
         ]
     )
@@ -135,6 +136,24 @@ class ActivePowerSensor(_BaseSensor):
         if self.coordinator.data is None:
             return None
         return self.coordinator.data.get("active_power_w", 0)
+
+
+class TotalHashrateSensor(_BaseSensor):
+    """Sum of real hashrate across all active miners (TH/s)."""
+
+    _attr_native_unit_of_measurement = "TH/s"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:lightning-bolt-circle"
+    _attr_translation_key = "total_hashrate"
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry, "total_hashrate")
+
+    @property
+    def native_value(self):
+        if self.coordinator.data is None:
+            return None
+        return self.coordinator.data.get("total_hashrate_th", 0.0)
 
 
 class ModeStateSensor(_BaseSensor):
