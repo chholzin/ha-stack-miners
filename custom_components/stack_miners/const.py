@@ -15,6 +15,9 @@ CONF_MINER_NAME = "name"
 CONF_MINER_ENTITY_ID = "entity_id"
 CONF_MINER_POWER_W = "power_w"
 
+# Fallback when the hass-miner power_limit sensor is unavailable
+DEFAULT_MINER_POWER_W = 1000
+
 # Config key — simulation
 CONF_SIMULATION = "simulation_enabled"
 

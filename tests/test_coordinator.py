@@ -9,17 +9,11 @@ import pytest
 # conftest stubs HA before this import
 from custom_components.stack_miners.coordinator import StackMinersCoordinator
 from custom_components.stack_miners.const import MODE_IDLE, MODE_RUNNING
+from conftest import make_state
 
 
 def _make_coordinator(hass, entry) -> StackMinersCoordinator:
     return StackMinersCoordinator(hass, entry)
-
-
-def _make_state(value: str) -> MagicMock:
-    """Return a minimal HA state mock with the given state string."""
-    s = MagicMock()
-    s.state = value
-    return s
 
 
 # ---------------------------------------------------------------------------
@@ -350,7 +344,7 @@ class TestBuildData:
 
         real = MagicMock()
         real.state = "x"  # overridden per entity below
-        hass.states.get.side_effect = lambda eid: _make_state(_fake_state(eid))
+        hass.states.get.side_effect = lambda eid: make_state(_fake_state(eid))
 
         data = coord._build_data()
         assert data["total_hashrate_th"] == pytest.approx(15.0)
@@ -362,7 +356,7 @@ class TestBuildData:
         coord._hashrate_sensor_ids[0] = "sensor.miner_s9_hashrate"
         coord._hashrate_sensor_ids[1] = "sensor.miner_bitaxe_hashrate"
 
-        hass.states.get.side_effect = lambda eid: _make_state(
+        hass.states.get.side_effect = lambda eid: make_state(
             "14.5" if eid == "sensor.miner_s9_hashrate" else "0.5"
         )
 
@@ -452,6 +446,7 @@ class TestSimulation:
 class TestEnabled:
     @pytest.mark.asyncio
     async def test_disabled_coordinator_does_not_switch(self, hass, entry):
+        """Grid events must not trigger switching when the coordinator is disabled."""
         coord = _make_coordinator(hass, entry)
         coord._miner_states = [False, False]
         coord.disable()
@@ -459,10 +454,23 @@ class TestEnabled:
         for _ in range(3):
             coord._grid_readings.append(-5000.0)
 
-        # Simulate grid event with disabled coordinator
-        if not coord._enabled:
-            pass  # coordinator skips evaluation when disabled
-        else:
+        # Replicate what _handle_grid_state_change does: only schedule when enabled
+        if coord._enabled and not coord._evaluating and not coord._simulation_active:
             await coord._evaluate_inner()
 
         hass.services.async_call.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_re_enabled_coordinator_switches_again(self, hass, entry):
+        """After re-enabling, the coordinator resumes switching normally."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [False, False]
+        coord.disable()
+        coord.enable()
+
+        for _ in range(3):
+            coord._grid_readings.append(-1600.0)
+
+        await coord._evaluate_inner()
+
+        hass.services.async_call.assert_awaited_once()

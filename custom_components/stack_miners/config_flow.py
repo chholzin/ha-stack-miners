@@ -35,6 +35,7 @@ from .const import (
     DEFAULT_HYSTERESIS_W,
     DEFAULT_MIN_OFF_TIME,
     DEFAULT_MIN_ON_TIME,
+    DEFAULT_MINER_POWER_W,
     DEFAULT_ROLLING_SAMPLES,
     DOMAIN,
 )
@@ -69,7 +70,7 @@ def _discover_miner_switches(hass) -> list[dict]:
             name = reg_entry.name or reg_entry.original_name or reg_entry.entity_id
 
             # Try to read the current power limit for this miner
-            power_w = 1000  # fallback default
+            power_w = DEFAULT_MINER_POWER_W  # fallback when power_limit sensor is unavailable
             pl_entity_id = power_limit_by_entry.get(reg_entry.config_entry_id)
             if pl_entity_id:
                 pl_state = hass.states.get(pl_entity_id)
@@ -125,7 +126,7 @@ def _select_schema(options: list[dict], defaults: list[str] | None = None) -> vo
     )
 
 
-def _miner_schema(name_default: str, idx: int, total: int, power_default: int = 1000) -> vol.Schema:
+def _miner_schema(name_default: str, idx: int, total: int, power_default: int = DEFAULT_MINER_POWER_W) -> vol.Schema:
     return vol.Schema(
         {
             vol.Required(CONF_MINER_NAME, default=name_default): str,
@@ -204,7 +205,7 @@ class StackMinersConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         entity_id = self._pending[0]
         miner_info = self._discovered.get(entity_id, {})
         name_default = miner_info.get("name", entity_id)
-        power_default = miner_info.get("power_w", 1000)
+        power_default = miner_info.get("power_w", DEFAULT_MINER_POWER_W)
         idx = len(self._miners) + 1
         total = len(self._selected_ids)
 
@@ -294,7 +295,7 @@ class StackMinersOptionsFlow(config_entries.OptionsFlow):
         prev = existing_miners.get(entity_id, {})
         name_default = prev.get(CONF_MINER_NAME, miner_info.get("name", entity_id))
         # Prefer previously saved value, then live power_limit sensor, then fallback
-        power_default = prev.get(CONF_MINER_POWER_W, miner_info.get("power_w", 1000))
+        power_default = prev.get(CONF_MINER_POWER_W, miner_info.get("power_w", DEFAULT_MINER_POWER_W))
         idx = len(self._miners) + 1
         total = len(self._selected_ids)
 

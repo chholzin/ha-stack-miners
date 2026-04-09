@@ -127,7 +127,8 @@ _stub_ha()
 # Fixtures
 # ---------------------------------------------------------------------------
 
-def _fake_state(state: str = "off"):
+def make_state(state: str = "off") -> MagicMock:
+    """Return a minimal HA state mock with the given state string."""
     s = MagicMock()
     s.state = state
     return s
@@ -141,7 +142,7 @@ def hass():
     doesn't skip switch calls due to a missing entity.
     """
     h = MagicMock()
-    h.states.get.return_value = _fake_state("off")
+    h.states.get.return_value = make_state("off")
     h.services.async_call = AsyncMock()
     h.async_create_task = lambda coro: asyncio.ensure_future(coro)
     return h

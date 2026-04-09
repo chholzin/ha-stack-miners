@@ -5,12 +5,12 @@ from __future__ import annotations
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_SIMULATION, DOMAIN
 from .coordinator import StackMinersCoordinator
+from .helpers import device_info
 
 
 async def async_setup_entry(
@@ -39,7 +39,7 @@ class StackMinersEnabledSwitch(CoordinatorEntity[StackMinersCoordinator], Switch
     def __init__(self, coordinator: StackMinersCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_enabled"
-        self._attr_device_info = _device_info(entry)
+        self._attr_device_info = device_info(entry)
 
     @property
     def is_on(self) -> bool:
@@ -54,15 +54,6 @@ class StackMinersEnabledSwitch(CoordinatorEntity[StackMinersCoordinator], Switch
         self.coordinator.disable()
 
 
-def _device_info(entry: ConfigEntry) -> DeviceInfo:
-    return DeviceInfo(
-        identifiers={(DOMAIN, entry.entry_id)},
-        name="Miner Stack",
-        manufacturer="Custom",
-        model="Solar Miner Controller",
-    )
-
-
 class StackMinersSimulationSwitch(CoordinatorEntity[StackMinersCoordinator], SwitchEntity):
     """Switch to activate/deactivate surplus simulation mode."""
 
@@ -73,7 +64,7 @@ class StackMinersSimulationSwitch(CoordinatorEntity[StackMinersCoordinator], Swi
     def __init__(self, coordinator: StackMinersCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_simulation"
-        self._attr_device_info = _device_info(entry)
+        self._attr_device_info = device_info(entry)
 
     @property
     def is_on(self) -> bool:

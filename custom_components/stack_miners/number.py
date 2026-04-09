@@ -6,12 +6,12 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfPower
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_SIMULATION, DOMAIN
 from .coordinator import StackMinersCoordinator
+from .helpers import device_info
 
 
 async def async_setup_entry(
@@ -43,12 +43,7 @@ class StackMinersSimulationSurplus(CoordinatorEntity[StackMinersCoordinator], Nu
     def __init__(self, coordinator: StackMinersCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_simulation_surplus"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name="Miner Stack",
-            manufacturer="Custom",
-            model="Solar Miner Controller",
-        )
+        self._attr_device_info = device_info(entry)
 
     @property
     def native_value(self) -> float:

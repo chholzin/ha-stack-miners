@@ -9,12 +9,12 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfPower
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import StackMinersCoordinator
+from .helpers import device_info
 
 
 async def async_setup_entry(
@@ -36,15 +36,6 @@ async def async_setup_entry(
     )
 
 
-def _device_info(entry: ConfigEntry) -> DeviceInfo:
-    return DeviceInfo(
-        identifiers={(DOMAIN, entry.entry_id)},
-        name="Miner Stack",
-        manufacturer="Custom",
-        model="Solar Miner Controller",
-    )
-
-
 class _BaseSensor(CoordinatorEntity[StackMinersCoordinator], SensorEntity):
     _attr_has_entity_name = True
 
@@ -52,7 +43,7 @@ class _BaseSensor(CoordinatorEntity[StackMinersCoordinator], SensorEntity):
         super().__init__(coordinator)
         self._key = key
         self._attr_unique_id = f"{entry.entry_id}_{key}"
-        self._attr_device_info = _device_info(entry)
+        self._attr_device_info = device_info(entry)
 
     @property
     def available(self) -> bool:
