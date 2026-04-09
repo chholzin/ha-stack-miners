@@ -59,7 +59,8 @@ def _stub_ha():
     class _ConfigFlow:
         pass
     class _OptionsFlow:
-        pass
+        """Stub for OptionsFlow — exposes config_entry like modern HA."""
+        config_entry: "_ConfigEntry | None" = None
     cfg.ConfigEntry  = _ConfigEntry
     cfg.ConfigFlow   = _ConfigFlow
     cfg.OptionsFlow  = _OptionsFlow

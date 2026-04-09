@@ -155,7 +155,7 @@ class StackMinersConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     def async_get_options_flow(entry: config_entries.ConfigEntry) -> StackMinersOptionsFlow:
-        return StackMinersOptionsFlow(entry)
+        return StackMinersOptionsFlow()
 
     # Step 1: grid sensor + settings
     async def async_step_user(self, user_input: dict | None = None):
@@ -236,8 +236,7 @@ class StackMinersConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class StackMinersOptionsFlow(config_entries.OptionsFlow):
     """Handle options updates."""
 
-    def __init__(self, entry: config_entries.ConfigEntry) -> None:
-        self._entry = entry
+    def __init__(self) -> None:
         self._data: dict[str, Any] = {}
         self._discovered: dict[str, str] = {}
         self._selected_ids: list[str] = []
@@ -245,14 +244,14 @@ class StackMinersOptionsFlow(config_entries.OptionsFlow):
         self._miners: list[dict] = []
 
     async def async_step_init(self, user_input: dict | None = None):
-        existing = {**self._entry.data, **self._entry.options}
+        existing = {**self.config_entry.data, **self.config_entry.options}
         if user_input is not None:
             self._data.update(user_input)
             return await self.async_step_select_miners()
         return self.async_show_form(step_id="init", data_schema=_settings_schema(existing))
 
     async def async_step_select_miners(self, user_input: dict | None = None):
-        existing = {**self._entry.data, **self._entry.options}
+        existing = {**self.config_entry.data, **self.config_entry.options}
         existing_ids = [m[CONF_MINER_ENTITY_ID] for m in existing.get(CONF_MINERS, [])]
 
         discovered = _discover_miner_switches(self.hass)
@@ -281,7 +280,7 @@ class StackMinersOptionsFlow(config_entries.OptionsFlow):
         )
 
     async def async_step_configure_miner(self, user_input: dict | None = None):
-        existing = {**self._entry.data, **self._entry.options}
+        existing = {**self.config_entry.data, **self.config_entry.options}
         existing_miners = {m[CONF_MINER_ENTITY_ID]: m for m in existing.get(CONF_MINERS, [])}
 
         if not self._pending:
