@@ -18,6 +18,7 @@ Die Integration überwacht einen Netz-Leistungssensor (z.B. Shelly 3EM) und scha
 - **Mindestlaufzeiten**: Konfigurierbare Mindest-Ein- und Ausschaltdauer schützt die Miner-Hardware.
 - **Prioritätsreihenfolge**: Miner werden in der festgelegten Reihenfolge eingeschaltet (Priorität 1 zuerst) und in umgekehrter Reihenfolge ausgeschaltet.
 - **Master-Schalter**: Der automatische Betrieb kann jederzeit über einen HA-Schalter deaktiviert werden, ohne die Miner zu stoppen.
+- **Akku-SOC-Schutz**: Optionaler Ladestandsensor mit konfigurierbarer Mindest-Schwelle — unterschreitet der SOC den Grenzwert, werden alle Miner sofort abgeschaltet.
 
 ### Voraussetzungen
 
@@ -59,6 +60,8 @@ Die Integration wird vollständig über die HA-Benutzeroberfläche konfiguriert:
 | Mindest-Einschaltdauer (s) | Wie lange ein Miner EIN bleiben muss | 60 s |
 | Mindest-Ausschaltdauer (s) | Wie lange ein Miner AUS bleiben muss | 60 s |
 | Simulationsmodus aktivieren | Erstellt Schalter und Schieberegler zur Simulation (optional) | Nein |
+| Akku-SOC-Sensor | Sensor mit Ladestand in % — leer lassen um SOC-Schutz zu deaktivieren (optional) | — |
+| Mindest-SOC (%) | Alle Miner werden abgeschaltet wenn der Ladestand diesen Wert unterschreitet | 20 % |
 
 **Schritt 2 — Miner auswählen**
 
@@ -77,7 +80,7 @@ Für jeden ausgewählten Miner werden Name (vorausgefüllt), Leistungsaufnahme i
 | `sensor.stack_miners_active_miners` | Anzahl aktiver Miner |
 | `sensor.stack_miners_active_power` | Summe aktiver Miner-Leistung (W) |
 | `sensor.stack_miners_total_hashrate` | Summierte Hashrate aller aktiven Miner (TH/s) |
-| `sensor.stack_miners_mode` | Regler-Modus: `idle` / `running` |
+| `sensor.stack_miners_mode` | Regler-Modus: `idle` / `running` / `soc_protection` |
 | `switch.stack_miners_auto_control` | Automatische Steuerung ein/aus |
 | `switch.stack_miners_simulation` | Simulationsmodus ein/aus *(optional)* |
 | `number.stack_miners_simulation_surplus` | Simulierter Überschuss 0–10.000 W *(optional)* |
@@ -90,6 +93,16 @@ Wenn bei der Konfiguration die Option **Simulationsmodus aktivieren** ausgewähl
 - **Schieberegler** (`number.stack_miners_simulation_surplus`): Stellt den simulierten PV-Überschuss in Watt ein (0–10.000 W). Jede Änderung löst sofort eine neue Schalterentscheidung aus.
 
 Dies ermöglicht es, das Schaltverhalten der Integration zu testen, ohne auf echten PV-Überschuss angewiesen zu sein.
+
+### Akku-SOC-Schutz
+
+Wenn bei der Konfiguration ein **Akku-SOC-Sensor** ausgewählt wurde, überwacht die Integration den Ladestand des Akkus:
+
+- Fällt der SOC unter den konfigurierten **Mindest-SOC**, werden alle laufenden Miner sofort abgeschaltet — unabhängig von Mindestlaufzeiten oder verfügbarem Überschuss.
+- Solange der SOC unter dem Grenzwert liegt, kann kein Miner eingeschaltet werden.
+- Sobald der SOC den Grenzwert wieder überschreitet, nimmt die Integration den normalen Betrieb auf. Die Mindest-Ausschaltdauer (`min_off_time`) greift dabei wie gewohnt, bevor Miner neu gestartet werden.
+- Ist der SOC-Sensor nicht erreichbar (`unavailable`), wird der Schutz **nicht** ausgelöst — Unsicherheit führt zu keinem ungewollten Shutdown.
+- Der Modus-Sensor zeigt `SOC-Schutz aktiv` solange der Schutz aktiv ist.
 
 ### Schaltlogik
 
@@ -132,6 +145,7 @@ The integration monitors a grid power sensor (e.g. Shelly 3EM) and switches mine
 - **Minimum run times**: Configurable minimum on/off durations protect miner hardware.
 - **Priority order**: Miners are switched on in priority order (priority 1 first) and off in reverse order.
 - **Master switch**: Automatic control can be disabled at any time via an HA switch without stopping the miners.
+- **Battery SOC protection**: Optional SOC sensor with a configurable minimum threshold — if SOC drops below it, all miners are shut down immediately.
 
 ### Requirements
 
@@ -173,6 +187,8 @@ The integration is configured entirely through the HA UI:
 | Minimum ON time (s) | How long a miner must stay on | 60 s |
 | Minimum OFF time (s) | How long a miner must stay off | 60 s |
 | Enable simulation mode | Creates a switch and slider for simulation (optional) | No |
+| Battery SOC sensor | Sensor reporting state of charge in % — leave empty to disable SOC protection (optional) | — |
+| Minimum SOC (%) | All miners are shut down if SOC drops below this value | 20 % |
 
 **Step 2 — Select miners**
 
@@ -191,7 +207,7 @@ For each selected miner, set the name (pre-filled), power consumption in watts, 
 | `sensor.stack_miners_active_miners` | Number of active miners |
 | `sensor.stack_miners_active_power` | Sum of active miners' power draw (W) |
 | `sensor.stack_miners_total_hashrate` | Combined hashrate of all active miners (TH/s) |
-| `sensor.stack_miners_mode` | Controller mode: `idle` / `running` |
+| `sensor.stack_miners_mode` | Controller mode: `idle` / `running` / `soc_protection` |
 | `switch.stack_miners_auto_control` | Enable / disable automatic control |
 | `switch.stack_miners_simulation` | Enable / disable simulation mode *(optional)* |
 | `number.stack_miners_simulation_surplus` | Simulated surplus power 0–10,000 W *(optional)* |
@@ -204,6 +220,16 @@ If **Enable simulation mode** was selected during configuration, two additional 
 - **Slider** (`number.stack_miners_simulation_surplus`): Sets the simulated PV surplus in watts (0–10,000 W). Every change immediately triggers a new switching decision.
 
 This allows testing the integration's switching behaviour without relying on real PV surplus.
+
+### Battery SOC protection
+
+When a **Battery SOC sensor** is configured, the integration monitors the battery state of charge:
+
+- If SOC drops below the configured **minimum SOC**, all running miners are shut down immediately — regardless of minimum run times or available surplus.
+- While SOC remains below the threshold, no miner can be switched on.
+- Once SOC recovers above the threshold, normal operation resumes. The minimum off time (`min_off_time`) still applies before miners restart.
+- If the SOC sensor is unavailable, protection is **not** triggered — uncertainty does not cause an unwanted shutdown.
+- The mode sensor shows `SOC protection active` while protection is in effect.
 
 ### Switching logic
 
