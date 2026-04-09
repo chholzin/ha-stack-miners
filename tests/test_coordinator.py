@@ -542,3 +542,49 @@ class TestMinerStateSync:
         coord._handle_miner_state_change(self._make_event("switch.some_other_switch", "on"))
 
         assert coord._miner_states == [False, False]
+
+
+# ---------------------------------------------------------------------------
+# Unavailable miner handling (_switch_miner guard)
+# ---------------------------------------------------------------------------
+
+class TestUnavailableMiner:
+    @pytest.mark.asyncio
+    async def test_switch_skipped_when_unavailable(self, hass, entry):
+        """No service call and no optimistic update when miner entity is unavailable."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [True, False]
+
+        hass.states.get.return_value = make_state("unavailable")
+
+        await coord._switch_miner(0, turn_on=False)
+
+        hass.services.async_call.assert_not_awaited()
+        # _miner_states must be unchanged — we do not flip it optimistically
+        assert coord._miner_states[0] is True
+
+    @pytest.mark.asyncio
+    async def test_switch_skipped_when_unknown(self, hass, entry):
+        """No service call and no optimistic update when miner entity is unknown."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [False, False]
+
+        hass.states.get.return_value = make_state("unknown")
+
+        await coord._switch_miner(0, turn_on=True)
+
+        hass.services.async_call.assert_not_awaited()
+        assert coord._miner_states[0] is False
+
+    @pytest.mark.asyncio
+    async def test_switch_proceeds_when_available(self, hass, entry):
+        """Service call and optimistic update happen normally for available entities."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [False, False]
+
+        hass.states.get.return_value = make_state("off")
+
+        await coord._switch_miner(0, turn_on=True)
+
+        hass.services.async_call.assert_awaited_once()
+        assert coord._miner_states[0] is True

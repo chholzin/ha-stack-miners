@@ -340,7 +340,13 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         state = self.hass.states.get(entity_id)
         if state is None:
-            _LOGGER.warning("Miner entity %s not found, skipping", entity_id)
+            _LOGGER.warning("Miner '%s' (%s) not found in HA state machine, skipping", name, entity_id)
+            return
+        if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            _LOGGER.warning(
+                "Miner '%s' (%s) is %s — skipping switch command, keeping current tracked state",
+                name, entity_id, state.state,
+            )
             return
 
         _LOGGER.info(
