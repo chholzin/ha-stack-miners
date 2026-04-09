@@ -160,7 +160,7 @@ class StackMinersConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # Step 1: grid sensor + settings
     async def async_step_user(self, user_input: dict | None = None):
         await self.async_set_unique_id(DOMAIN)
-        self._async_abort_if_unique_id_configured()
+        self._abort_if_unique_id_configured()
         if user_input is not None:
             self._data.update(user_input)
             return await self.async_step_select_miners()
