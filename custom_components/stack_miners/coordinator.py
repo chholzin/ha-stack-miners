@@ -69,6 +69,7 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._enabled: bool = True
         self._mode: str = MODE_IDLE
         self._unsubscribe_grid = None
+        self._unsubscribe_miners = None
         self._evaluating: bool = False
         # entity_id of hass-miner's miner_consumption / hashrate sensor per miner
         self._consumption_sensor_ids: list[str | None] = [None] * len(self._miners)
@@ -94,6 +95,16 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._handle_grid_state_change,
         )
 
+        # Track miner switch states so _miner_states stays in sync after HA
+        # restarts (hass-miner may come online after us) and after manual overrides.
+        miner_entity_ids = [m[CONF_MINER_ENTITY_ID] for m in self._miners]
+        if miner_entity_ids:
+            self._unsubscribe_miners = async_track_state_change_event(
+                self.hass,
+                miner_entity_ids,
+                self._handle_miner_state_change,
+            )
+
         # Seed one reading from current grid sensor state
         grid_state = self.hass.states.get(self._grid_sensor)
         if grid_state and grid_state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
@@ -110,6 +121,9 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self._unsubscribe_grid:
             self._unsubscribe_grid()
             self._unsubscribe_grid = None
+        if self._unsubscribe_miners:
+            self._unsubscribe_miners()
+            self._unsubscribe_miners = None
         await super().async_shutdown()
 
     def _seed_miner_states(self) -> None:
@@ -202,6 +216,28 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Skip evaluation when simulation is active — simulation drives decisions
         if self._enabled and not self._evaluating and not self._simulation_active:
             self._schedule_evaluate()
+
+    @callback
+    def _handle_miner_state_change(self, event: Event) -> None:
+        """Keep _miner_states in sync with the real HA switch state.
+
+        Called when hass-miner reports a state change for any of the managed
+        miner switches — e.g. after HA restarts and hass-miner comes online,
+        or when a miner is toggled manually via the HA UI.
+        Unavailable / unknown states are intentionally ignored so that a
+        temporary disconnect does not reset our optimistic tracking.
+        """
+        entity_id = event.data.get("entity_id")
+        new_state = event.data.get("new_state")
+        if new_state is None or new_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            return
+
+        for i, miner in enumerate(self._miners):
+            if miner[CONF_MINER_ENTITY_ID] == entity_id:
+                self._miner_states[i] = new_state.state == "on"
+                self._update_mode()
+                self.async_set_updated_data(self._build_data())
+                break
 
     # ------------------------------------------------------------------
     # Switching logic

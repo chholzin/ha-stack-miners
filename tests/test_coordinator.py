@@ -474,3 +474,71 @@ class TestEnabled:
         await coord._evaluate_inner()
 
         hass.services.async_call.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Miner state synchronisation (restart / manual override)
+# ---------------------------------------------------------------------------
+
+class TestMinerStateSync:
+    def _make_event(self, entity_id: str, state: str) -> MagicMock:
+        event = MagicMock()
+        event.data = {"entity_id": entity_id, "new_state": make_state(state)}
+        return event
+
+    def test_syncs_on_state_to_true(self, hass, entry):
+        """When hass-miner reports a switch as 'on', _miner_states is updated."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [False, False]
+
+        coord._handle_miner_state_change(self._make_event("switch.miner_s9_active", "on"))
+
+        assert coord._miner_states[0] is True
+        assert coord._miner_states[1] is False
+
+    def test_syncs_off_state_to_false(self, hass, entry):
+        """When hass-miner reports a switch as 'off', _miner_states is updated."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [True, True]
+
+        coord._handle_miner_state_change(self._make_event("switch.miner_bitaxe_active", "off"))
+
+        assert coord._miner_states[0] is True
+        assert coord._miner_states[1] is False
+
+    def test_ignores_unavailable_state(self, hass, entry):
+        """Unavailable state must not reset optimistic tracking."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [True, False]
+
+        coord._handle_miner_state_change(self._make_event("switch.miner_s9_active", "unavailable"))
+
+        assert coord._miner_states[0] is True  # unchanged
+
+    def test_ignores_unknown_state(self, hass, entry):
+        """Unknown state must not reset optimistic tracking."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [True, False]
+
+        coord._handle_miner_state_change(self._make_event("switch.miner_s9_active", "unknown"))
+
+        assert coord._miner_states[0] is True  # unchanged
+
+    def test_updates_mode_after_sync(self, hass, entry):
+        """Mode is recalculated after a state sync."""
+        from custom_components.stack_miners.const import MODE_RUNNING, MODE_IDLE
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [False, False]
+
+        coord._handle_miner_state_change(self._make_event("switch.miner_s9_active", "on"))
+
+        assert coord._mode == MODE_RUNNING
+
+    def test_ignores_unknown_entity(self, hass, entry):
+        """Events for unmanaged entities are silently ignored."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [False, False]
+
+        coord._handle_miner_state_change(self._make_event("switch.some_other_switch", "on"))
+
+        assert coord._miner_states == [False, False]
