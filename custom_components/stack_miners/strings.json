@@ -9,7 +9,8 @@
           "hysteresis_w": "Hysterese (W)",
           "rolling_samples": "Gleitender Durchschnitt (Samples)",
           "min_on_time_s": "Mindest-Einschaltdauer (s)",
-          "min_off_time_s": "Mindest-Ausschaltdauer (s)"
+          "min_off_time_s": "Mindest-Ausschaltdauer (s)",
+          "simulation_enabled": "Simulationsmodus aktivieren"
         },
         "data_description": {
           "grid_sensor_entity_id": "Sensor der die Netzleistung meldet (negativ = Einspeisung, z.B. Shelly 3EM)",

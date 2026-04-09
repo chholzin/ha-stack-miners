@@ -9,6 +9,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     EntitySelector,
     EntitySelectorConfig,
     NumberSelector,
@@ -107,7 +108,7 @@ def _settings_schema(defaults: dict) -> vol.Schema:
             vol.Optional(CONF_MIN_OFF_TIME, default=defaults.get(CONF_MIN_OFF_TIME, DEFAULT_MIN_OFF_TIME)): NumberSelector(
                 NumberSelectorConfig(min=5, max=3600, step=5, unit_of_measurement="s", mode=NumberSelectorMode.BOX)
             ),
-            vol.Optional(CONF_SIMULATION, default=defaults.get(CONF_SIMULATION, False)): bool,
+            vol.Optional(CONF_SIMULATION, default=defaults.get(CONF_SIMULATION, False)): BooleanSelector(),
         }
     )
 

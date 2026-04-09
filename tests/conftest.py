@@ -113,6 +113,7 @@ def _stub_ha():
 
     # --- selectors (not used in coordinator, stub to avoid ImportError) ---
     for name in (
+        "BooleanSelector",
         "EntitySelector", "EntitySelectorConfig",
         "NumberSelector", "NumberSelectorConfig", "NumberSelectorMode",
         "SelectSelector", "SelectSelectorConfig", "SelectSelectorMode",
