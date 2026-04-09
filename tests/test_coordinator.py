@@ -663,3 +663,95 @@ class TestUnavailableSkip:
 
         # S9 is reachable but blocked by min_off_time → BitAxe must NOT start
         hass.services.async_call.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Battery SOC protection
+# ---------------------------------------------------------------------------
+
+class TestSocProtection:
+    def _coord_with_soc(self, hass, entry, soc_value: str | None, soc_min: float = 20.0):
+        """Create a coordinator wired to a SOC sensor."""
+        entry.data = {
+            **entry.data,
+            "soc_sensor_entity_id": "sensor.battery_soc",
+            "soc_min_percent": soc_min,
+        }
+        coord = _make_coordinator(hass, entry)
+
+        def _state(eid):
+            if eid == "sensor.battery_soc":
+                return make_state(soc_value) if soc_value is not None else None
+            return make_state("off")
+
+        hass.states.get.side_effect = _state
+        return coord
+
+    @pytest.mark.asyncio
+    async def test_shuts_down_all_miners_when_soc_low(self, hass, entry):
+        """All running miners are turned off when SOC drops below threshold."""
+        coord = self._coord_with_soc(hass, entry, soc_value="15")  # below 20%
+        coord._miner_states = [True, True]
+
+        await coord._evaluate_inner()
+
+        assert hass.services.async_call.await_count == 2
+        calls = hass.services.async_call.call_args_list
+        services = [c.args[1] for c in calls]
+        assert all(s == "turn_off" for s in services)
+
+    @pytest.mark.asyncio
+    async def test_does_not_turn_on_when_soc_low(self, hass, entry):
+        """No miner is started when SOC is below threshold, even with surplus."""
+        coord = self._coord_with_soc(hass, entry, soc_value="10")
+        coord._miner_states = [False, False]
+        for _ in range(3):
+            coord._grid_readings.append(-5000.0)
+
+        await coord._evaluate_inner()
+
+        hass.services.async_call.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_resumes_normal_when_soc_recovers(self, hass, entry):
+        """Normal surplus-based switching resumes once SOC is above threshold."""
+        coord = self._coord_with_soc(hass, entry, soc_value="25")  # above 20%
+        coord._miner_states = [False, False]
+        for _ in range(3):
+            coord._grid_readings.append(-1600.0)
+
+        await coord._evaluate_inner()
+
+        hass.services.async_call.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_soc_unavailable_does_not_shut_down(self, hass, entry):
+        """If the SOC sensor is unavailable, miners keep running (fail-safe)."""
+        coord = self._coord_with_soc(hass, entry, soc_value="unavailable")
+        coord._miner_states = [True, False]
+        for _ in range(3):
+            coord._grid_readings.append(-5000.0)
+
+        await coord._evaluate_inner()
+
+        # Should not shut down — sensor uncertainty must not trigger protection
+        assert coord._miner_states[0] is True
+
+    def test_mode_is_soc_protection_when_soc_low(self, hass, entry):
+        """Mode sensor reports soc_protection when SOC is below threshold."""
+        from custom_components.stack_miners.const import MODE_SOC_PROTECTION
+        coord = self._coord_with_soc(hass, entry, soc_value="5")
+        assert coord._current_mode() == MODE_SOC_PROTECTION
+
+    def test_mode_is_idle_when_soc_ok_and_no_miners(self, hass, entry):
+        """Mode is idle (not soc_protection) when SOC is above threshold."""
+        from custom_components.stack_miners.const import MODE_IDLE
+        coord = self._coord_with_soc(hass, entry, soc_value="80")
+        coord._miner_states = [False, False]
+        assert coord._current_mode() == MODE_IDLE
+
+    def test_no_soc_sensor_disables_protection(self, hass, entry):
+        """Without a configured SOC sensor, _soc_below_threshold always returns False."""
+        coord = _make_coordinator(hass, entry)
+        assert coord._soc_sensor is None
+        assert coord._soc_below_threshold() is False

@@ -10,7 +10,9 @@
           "rolling_samples": "Gleitender Durchschnitt (Samples)",
           "min_on_time_s": "Mindest-Einschaltdauer (s)",
           "min_off_time_s": "Mindest-Ausschaltdauer (s)",
-          "simulation_enabled": "Simulationsmodus-Entitäten erstellen (Schalter + Schieberegler)"
+          "simulation_enabled": "Simulationsmodus-Entitäten erstellen (Schalter + Schieberegler)",
+          "soc_sensor_entity_id": "Akku-SOC-Sensor (optional)",
+          "soc_min_percent": "Mindest-SOC (%)"
         },
         "data_description": {
           "grid_sensor_entity_id": "Sensor der die Netzleistung meldet (negativ = Einspeisung, z.B. Shelly 3EM channel_power)",
@@ -18,7 +20,9 @@
           "rolling_samples": "Anzahl Messwerte für den gleitenden Durchschnitt — mehr = stabiler aber träger",
           "min_on_time_s": "Mindestzeit EIN bevor ein Miner ausgeschaltet werden kann",
           "min_off_time_s": "Mindestzeit AUS bevor ein Miner eingeschaltet werden kann",
-          "simulation_enabled": "Erstellt einen Schalter und einen Schieberegler (0–10000 W) zur Simulation von PV-Überschuss. Bei aktiver Simulation werden die echten Sensor-Messwerte ignoriert."
+          "simulation_enabled": "Erstellt einen Schalter und einen Schieberegler (0–10000 W) zur Simulation von PV-Überschuss. Bei aktiver Simulation werden die echten Sensor-Messwerte ignoriert.",
+          "soc_sensor_entity_id": "Sensor des Akkus mit Ladestand in % — wenn nicht gesetzt, ist der SOC-Schutz deaktiviert",
+          "soc_min_percent": "Unterschreitet der Ladestand diesen Wert, werden alle Miner sofort abgeschaltet"
         }
       },
       "select_miners": {
@@ -61,7 +65,9 @@
           "rolling_samples": "Gleitender Durchschnitt (Samples)",
           "min_on_time_s": "Mindest-Einschaltdauer (s)",
           "min_off_time_s": "Mindest-Ausschaltdauer (s)",
-          "simulation_enabled": "Simulationsmodus-Entitäten erstellen"
+          "simulation_enabled": "Simulationsmodus-Entitäten erstellen",
+          "soc_sensor_entity_id": "Akku-SOC-Sensor (optional)",
+          "soc_min_percent": "Mindest-SOC (%)"
         }
       },
       "select_miners": {
@@ -109,7 +115,8 @@
         "name": "Regler-Modus",
         "state": {
           "idle": "Inaktiv",
-          "running": "Läuft"
+          "running": "Läuft",
+          "soc_protection": "SOC-Schutz aktiv"
         }
       }
     },

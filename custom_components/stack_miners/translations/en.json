@@ -10,7 +10,9 @@
           "rolling_samples": "Rolling average samples",
           "min_on_time_s": "Minimum ON time (s)",
           "min_off_time_s": "Minimum OFF time (s)",
-          "simulation_enabled": "Create simulation mode entities (switch + slider)"
+          "simulation_enabled": "Create simulation mode entities (switch + slider)",
+          "soc_sensor_entity_id": "Battery SOC sensor (optional)",
+          "soc_min_percent": "Minimum SOC (%)"
         },
         "data_description": {
           "grid_sensor_entity_id": "Sensor reporting grid power in Watts (negative = surplus fed to grid, e.g. Shelly 3EM channel_power)",
@@ -18,7 +20,9 @@
           "rolling_samples": "Number of readings to average — higher = more stable but slower response",
           "min_on_time_s": "Minimum seconds a miner must stay ON before being turned off",
           "min_off_time_s": "Minimum seconds a miner must stay OFF before being turned on",
-          "simulation_enabled": "Creates a switch and a slider (0–10000 W) to simulate PV surplus. When simulation is active, real sensor readings are ignored."
+          "simulation_enabled": "Creates a switch and a slider (0–10000 W) to simulate PV surplus. When simulation is active, real sensor readings are ignored.",
+          "soc_sensor_entity_id": "Battery sensor reporting state of charge in % — if not set, SOC protection is disabled",
+          "soc_min_percent": "If SOC drops below this value all miners are shut down immediately"
         }
       },
       "select_miners": {
@@ -61,7 +65,9 @@
           "rolling_samples": "Rolling average samples",
           "min_on_time_s": "Minimum ON time (s)",
           "min_off_time_s": "Minimum OFF time (s)",
-          "simulation_enabled": "Create simulation mode entities"
+          "simulation_enabled": "Create simulation mode entities",
+          "soc_sensor_entity_id": "Battery SOC sensor (optional)",
+          "soc_min_percent": "Minimum SOC (%)"
         }
       },
       "select_miners": {
@@ -109,7 +115,8 @@
         "name": "Controller Mode",
         "state": {
           "idle": "Idle",
-          "running": "Running"
+          "running": "Running",
+          "soc_protection": "SOC protection active"
         }
       }
     },

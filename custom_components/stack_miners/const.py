@@ -21,6 +21,11 @@ DEFAULT_MINER_POWER_W = 1000
 # Config key — simulation
 CONF_SIMULATION = "simulation_enabled"
 
+# Config keys — battery SOC protection (both optional)
+CONF_SOC_SENSOR = "soc_sensor_entity_id"
+CONF_SOC_MIN = "soc_min_percent"
+DEFAULT_SOC_MIN = 20
+
 # Internal config flow key for miner priority (stripped before saving)
 CONF_MINER_PRIORITY = "priority"
 CONF_MINER_PRIORITY_INTERNAL = "_priority"
@@ -34,3 +39,4 @@ DEFAULT_MIN_OFF_TIME = 60
 # Mode strings (exposed via sensor)
 MODE_IDLE = "idle"
 MODE_RUNNING = "running"
+MODE_SOC_PROTECTION = "soc_protection"

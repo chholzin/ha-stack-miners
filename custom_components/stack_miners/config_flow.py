@@ -33,11 +33,14 @@ from .const import (
     CONF_MIN_ON_TIME,
     CONF_ROLLING_SAMPLES,
     CONF_SIMULATION,
+    CONF_SOC_MIN,
+    CONF_SOC_SENSOR,
     DEFAULT_HYSTERESIS_W,
     DEFAULT_MIN_OFF_TIME,
     DEFAULT_MIN_ON_TIME,
     DEFAULT_MINER_POWER_W,
     DEFAULT_ROLLING_SAMPLES,
+    DEFAULT_SOC_MIN,
     DOMAIN,
 )
 
@@ -109,6 +112,12 @@ def _settings_schema(defaults: dict) -> vol.Schema:
                 NumberSelectorConfig(min=5, max=3600, step=5, unit_of_measurement="s", mode=NumberSelectorMode.BOX)
             ),
             vol.Optional(CONF_SIMULATION, default=defaults.get(CONF_SIMULATION, False)): BooleanSelector(),
+            vol.Optional(CONF_SOC_SENSOR, description={"suggested_value": defaults.get(CONF_SOC_SENSOR)}): EntitySelector(
+                EntitySelectorConfig(domain="sensor", device_class="battery")
+            ),
+            vol.Optional(CONF_SOC_MIN, default=defaults.get(CONF_SOC_MIN, DEFAULT_SOC_MIN)): NumberSelector(
+                NumberSelectorConfig(min=0, max=100, step=1, unit_of_measurement="%", mode=NumberSelectorMode.SLIDER)
+            ),
         }
     )
 

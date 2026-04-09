@@ -27,9 +27,13 @@ from .const import (
     CONF_MIN_ON_TIME,
     CONF_ROLLING_SAMPLES,
     CONF_SIMULATION,
+    CONF_SOC_MIN,
+    CONF_SOC_SENSOR,
+    DEFAULT_SOC_MIN,
     DOMAIN,
     MODE_IDLE,
     MODE_RUNNING,
+    MODE_SOC_PROTECTION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,6 +78,11 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # entity_id of hass-miner's miner_consumption / hashrate sensor per miner
         self._consumption_sensor_ids: list[str | None] = [None] * len(self._miners)
         self._hashrate_sensor_ids: list[str | None] = [None] * len(self._miners)
+
+        # Battery SOC protection (both optional — None means feature disabled)
+        soc_sensor = data.get(CONF_SOC_SENSOR) or None  # coerce "" to None
+        self._soc_sensor: str | None = soc_sensor
+        self._soc_min: float = float(data.get(CONF_SOC_MIN, DEFAULT_SOC_MIN))
 
         # Simulation
         self._simulation_enabled: bool = bool(data.get(CONF_SIMULATION, False))
@@ -259,6 +268,10 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _evaluate_inner(self) -> None:
         """Run one turn-on / turn-off decision cycle."""
+        if self._soc_below_threshold():
+            await self._shutdown_all_miners()
+            return
+
         surplus_w = self._effective_surplus()
         if surplus_w is None:
             return
@@ -268,6 +281,31 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if await self._try_turn_on(surplus_w, now):
             return  # one action per evaluation cycle
         await self._try_turn_off(surplus_w, now)
+
+    def _soc_below_threshold(self) -> bool:
+        """Return True if the battery SOC sensor is configured and below the minimum."""
+        if self._soc_sensor is None:
+            return False
+        soc = self._read_sensor_float(self._soc_sensor)
+        if soc is None:
+            return False  # sensor unavailable — don't shut down on uncertainty
+        return soc < self._soc_min
+
+    async def _shutdown_all_miners(self) -> None:
+        """Turn off every running miner immediately (SOC protection).
+
+        Bypasses min_on_time — battery protection takes priority over hardware
+        wear protection.  Entity-unavailability is still respected via
+        _switch_miner's guard.
+        """
+        for i, miner in enumerate(self._miners):
+            if self._miner_states[i]:
+                _LOGGER.warning(
+                    "SOC below %.0f%% — shutting down miner '%s'",
+                    self._soc_min,
+                    miner[CONF_MINER_NAME],
+                )
+                await self._switch_miner(i, turn_on=False)
 
     def _effective_surplus(self) -> float | None:
         """Return the surplus power to base decisions on.
@@ -387,8 +425,13 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     # Internal helpers
     # ------------------------------------------------------------------
 
+    def _current_mode(self) -> str:
+        if self._soc_below_threshold():
+            return MODE_SOC_PROTECTION
+        return MODE_RUNNING if any(self._miner_states) else MODE_IDLE
+
     def _update_mode(self) -> None:
-        self._mode = MODE_RUNNING if any(self._miner_states) else MODE_IDLE
+        self._mode = self._current_mode()
 
     def _read_sensor_float(self, entity_id: str | None) -> float | None:
         """Read a numeric sensor state; return None if unavailable."""
@@ -429,8 +472,10 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "surplus_avg": surplus_avg,
             "active_miners": active_count,
             "active_power_w": active_power,
-            "mode": self._mode,
+            "mode": self._current_mode(),
             "enabled": self._enabled,
+            "soc": self._read_sensor_float(self._soc_sensor),
+            "soc_min": self._soc_min if self._soc_sensor else None,
             "miner_states": list(self._miner_states),
             "total_miners": len(self._miners),
             "total_hashrate_th": round(total_hashrate, 2),
