@@ -588,3 +588,78 @@ class TestUnavailableMiner:
 
         hass.services.async_call.assert_awaited_once()
         assert coord._miner_states[0] is True
+
+
+# ---------------------------------------------------------------------------
+# Priority skip for unavailable miners
+# ---------------------------------------------------------------------------
+
+class TestUnavailableSkip:
+    @pytest.mark.asyncio
+    async def test_turn_on_skips_unavailable_high_priority(self, hass, entry):
+        """When the highest-priority miner is unavailable, the next one starts."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [False, False]
+
+        def _state(eid):
+            if eid == "switch.miner_s9_active":
+                return make_state("unavailable")
+            return make_state("off")
+
+        hass.states.get.side_effect = _state
+
+        for _ in range(3):
+            coord._grid_readings.append(-1600.0)  # enough for either miner
+
+        await coord._evaluate_inner()
+
+        # S9 is unreachable → BitAxe should be turned on instead
+        hass.services.async_call.assert_awaited_once_with(
+            "homeassistant", "turn_on",
+            {"entity_id": "switch.miner_bitaxe_active"},
+            blocking=False,
+        )
+
+    @pytest.mark.asyncio
+    async def test_turn_off_skips_unavailable_low_priority(self, hass, entry):
+        """When the lowest-priority running miner is unavailable, the next one is turned off."""
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [True, True]
+
+        def _state(eid):
+            if eid == "switch.miner_bitaxe_active":
+                return make_state("unavailable")
+            return make_state("on")
+
+        hass.states.get.side_effect = _state
+
+        for _ in range(3):
+            coord._grid_readings.append(500.0)  # not enough surplus for either miner
+
+        await coord._evaluate_inner()
+
+        # BitAxe is unreachable → S9 should be turned off instead
+        hass.services.async_call.assert_awaited_once_with(
+            "homeassistant", "turn_off",
+            {"entity_id": "switch.miner_s9_active"},
+            blocking=False,
+        )
+
+    @pytest.mark.asyncio
+    async def test_min_off_time_still_blocks_lower_priority(self, hass, entry):
+        """An unavailable miner is skipped, but a reachable blocked miner still stops the search."""
+        entry.data = {**entry.data, "min_off_time_s": 60, "min_on_time_s": 0}
+        coord = _make_coordinator(hass, entry)
+        coord._miner_states = [False, False]
+        # S9 is reachable but within min_off_time
+        coord._last_switch_time[0] = datetime.now(tz=timezone.utc)
+
+        hass.states.get.return_value = make_state("off")
+
+        for _ in range(3):
+            coord._grid_readings.append(-2000.0)
+
+        await coord._evaluate_inner()
+
+        # S9 is reachable but blocked by min_off_time → BitAxe must NOT start
+        hass.services.async_call.assert_not_awaited()

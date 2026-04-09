@@ -281,17 +281,27 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return None
         return -statistics.mean(self._grid_readings)
 
+    def _is_entity_reachable(self, entity_id: str) -> bool:
+        """Return True if the entity exists and reports a known (non-unavailable) state."""
+        state = self.hass.states.get(entity_id)
+        return state is not None and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN)
+
     async def _try_turn_on(self, surplus_w: float, now: datetime) -> bool:
         """Try to turn on the next miner in priority order.
 
         Returns True if a miner was switched on (caller should stop).
-        Stops at the first off miner regardless of the reason — a lower-priority
-        miner is never started while a higher-priority one is still waiting
-        (insufficient surplus or still in min_off_time).
+
+        Unavailable miners are skipped so that a lower-priority reachable
+        miner can still be started.  A reachable but under-powered miner
+        (insufficient surplus or still in min_off_time) stops the search —
+        we never leapfrog a waiting miner that could run soon.
         """
         for i, miner in enumerate(self._miners):
             if self._miner_states[i]:
                 continue  # already on; look for the next off miner
+
+            if not self._is_entity_reachable(miner[CONF_MINER_ENTITY_ID]):
+                continue  # offline — skip, lower-priority miners may still start
 
             needed = miner[CONF_MINER_POWER_W] + self._hysteresis_w
             if surplus_w >= needed:
@@ -299,7 +309,8 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if elapsed >= self._min_off_time:
                     await self._switch_miner(i, turn_on=True)
                     return True
-            # Stop here — do not skip to lower-priority miners
+            # Reachable but blocked (insufficient surplus or min_off_time) — stop.
+            # Lower-priority miners wait until this one can run.
             break
 
         return False
@@ -307,9 +318,9 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _try_turn_off(self, surplus_w: float, now: datetime) -> None:
         """Try to turn off the lowest-priority running miner.
 
-        Only the lowest-priority (highest-index) running miner is evaluated
-        per cycle.  If it cannot be turned off yet (min_on_time), we wait for
-        the next sensor reading.
+        Only the lowest-priority reachable running miner is evaluated per
+        cycle.  Unavailable miners are skipped so that a higher-priority
+        reachable miner can still be turned off if needed.
         """
         running_load = sum(
             self._miners[j][CONF_MINER_POWER_W]
@@ -319,7 +330,10 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         for i in reversed(range(len(self._miners))):
             if not self._miner_states[i]:
-                continue  # already off; keep looking for the lowest-priority running one
+                continue  # already off
+
+            if not self._is_entity_reachable(self._miners[i][CONF_MINER_ENTITY_ID]):
+                continue  # offline — skip, check next-higher-priority running miner
 
             miner_power = self._miners[i][CONF_MINER_POWER_W]
             # Turn off if surplus can no longer sustain the remaining load after removal
@@ -328,7 +342,7 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 elapsed = (now - self._last_switch_time[i]).total_seconds()
                 if elapsed >= self._min_on_time:
                     await self._switch_miner(i, turn_on=False)
-            # Only evaluate the single lowest-priority running miner per cycle
+            # Only act on the single lowest-priority reachable running miner per cycle
             break
 
     async def _switch_miner(self, index: int, *, turn_on: bool) -> None:
