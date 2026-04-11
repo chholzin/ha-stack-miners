@@ -755,3 +755,33 @@ class TestSocProtection:
         coord = _make_coordinator(hass, entry)
         assert coord._soc_sensor is None
         assert coord._soc_below_threshold() is False
+
+    @pytest.mark.asyncio
+    async def test_simulation_bypasses_soc_protection(self, hass, entry):
+        """In simulation mode the SOC protection is skipped so testing remains possible."""
+        coord = self._coord_with_soc(hass, entry, soc_value="5")  # well below threshold
+        coord._miner_states = [False, False]
+        coord.set_simulation_active(True)
+        coord.set_simulation_surplus(1600.0)  # enough for S9 (1400 + 100)
+
+        await coord._evaluate_inner()
+
+        # Miner must turn on despite low SOC because simulation bypasses the guard
+        hass.services.async_call.assert_awaited_once_with(
+            "homeassistant", "turn_on",
+            {"entity_id": "switch.miner_s9_active"},
+            blocking=False,
+        )
+
+    @pytest.mark.asyncio
+    async def test_soc_protection_still_active_outside_simulation(self, hass, entry):
+        """SOC protection still shuts miners down when simulation is NOT active."""
+        coord = self._coord_with_soc(hass, entry, soc_value="5")
+        coord._miner_states = [True, True]
+        # simulation_active stays False (default)
+
+        await coord._evaluate_inner()
+
+        assert hass.services.async_call.await_count == 2
+        services = [c.args[1] for c in hass.services.async_call.call_args_list]
+        assert all(s == "turn_off" for s in services)

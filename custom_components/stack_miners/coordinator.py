@@ -268,7 +268,7 @@ class StackMinersCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _evaluate_inner(self) -> None:
         """Run one turn-on / turn-off decision cycle."""
-        if self._soc_below_threshold():
+        if not self._simulation_active and self._soc_below_threshold():
             await self._shutdown_all_miners()
             return
 
