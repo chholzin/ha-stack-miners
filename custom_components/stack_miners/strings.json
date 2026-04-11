@@ -32,6 +32,16 @@
           "selected_miners": "Miner"
         }
       },
+      "add_manual_miners": {
+        "title": "Weitere Miner hinzufügen (optional)",
+        "description": "Hier können beliebige Schalter-Entitäten als Miner hinzugefügt werden, die nicht über hass-miner eingebunden sind (z.B. Smart Plugs, Shelly, etc.).",
+        "data": {
+          "manual_miners": "Weitere Miner (Switches)"
+        },
+        "data_description": {
+          "manual_miners": "Wähle einen oder mehrere Schalter aus — Leistung und Priorität werden im nächsten Schritt konfiguriert"
+        }
+      },
       "configure_miner": {
         "title": "Miner {count}/{total} konfigurieren",
         "description": "Entität: {entity_id}",
@@ -48,7 +58,6 @@
     },
     "abort": {
       "already_configured": "Stack Miners ist bereits konfiguriert",
-      "no_miners_found": "Keine Miner über hass-miner gefunden. Bitte zuerst Miner über die hass-miner Integration einrichten.",
       "no_miners_selected": "Mindestens einen Miner auswählen"
     },
     "error": {
@@ -75,6 +84,16 @@
           "selected_miners": "Miner"
         }
       },
+      "add_manual_miners": {
+        "title": "Weitere Miner hinzufügen (optional)",
+        "description": "Hier können beliebige Schalter-Entitäten als Miner hinzugefügt werden, die nicht über hass-miner eingebunden sind (z.B. Smart Plugs, Shelly, etc.).",
+        "data": {
+          "manual_miners": "Weitere Miner (Switches)"
+        },
+        "data_description": {
+          "manual_miners": "Wähle einen oder mehrere Schalter aus — Leistung und Priorität werden im nächsten Schritt konfiguriert"
+        }
+      },
       "configure_miner": {
         "title": "Miner {count}/{total} konfigurieren",
         "description": "Entität: {entity_id}",
@@ -85,9 +104,7 @@
         }
       }
     },
-    "abort": {
-      "no_miners_found": "Keine Miner über hass-miner gefunden"
-    },
+    "abort": {},
     "error": {
       "no_miners_selected": "Bitte mindestens einen Miner auswählen"
     }

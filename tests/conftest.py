@@ -56,11 +56,15 @@ def _stub_ha():
     # --- homeassistant.config_entries ---
     class _ConfigEntry:
         pass
+
     class _ConfigFlow:
-        pass
+        def __init_subclass__(cls, domain=None, **kwargs):
+            super().__init_subclass__(**kwargs)
+
     class _OptionsFlow:
         """Stub for OptionsFlow — exposes config_entry like modern HA."""
         config_entry: "_ConfigEntry | None" = None
+
     cfg.ConfigEntry  = _ConfigEntry
     cfg.ConfigFlow   = _ConfigFlow
     cfg.OptionsFlow  = _OptionsFlow
@@ -112,14 +116,30 @@ def _stub_ha():
     sensor_comp.SensorStateClass = _SSC
     switch_comp.SwitchEntity = object
 
-    # --- selectors (not used in coordinator, stub to avoid ImportError) ---
-    for name in (
+    # --- selectors (stubbed as passthrough validators so voluptuous accepts them) ---
+    class _SimpleSelector:
+        """Passthrough stub — voluptuous calls it as a validator; we return value as-is."""
+        def __init__(self, *args, **kwargs):
+            pass
+        def __call__(self, value):
+            return value
+
+    class _NumberSelectorMode:
+        BOX    = "box"
+        SLIDER = "slider"
+
+    class _SelectSelectorMode:
+        LIST = "list"
+
+    for _name in (
         "BooleanSelector",
         "EntitySelector", "EntitySelectorConfig",
-        "NumberSelector", "NumberSelectorConfig", "NumberSelectorMode",
-        "SelectSelector", "SelectSelectorConfig", "SelectSelectorMode",
+        "NumberSelector", "NumberSelectorConfig",
+        "SelectSelector", "SelectSelectorConfig",
     ):
-        setattr(sel, name, MagicMock)
+        setattr(sel, _name, _SimpleSelector)
+    sel.NumberSelectorMode = _NumberSelectorMode
+    sel.SelectSelectorMode = _SelectSelectorMode
 
 
 _stub_ha()

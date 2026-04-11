@@ -8,7 +8,7 @@
 
 Eine Home Assistant Custom Integration zur automatischen Steuerung mehrerer Bitcoin-Miner auf Basis von PV-Überschussstrom.
 
-Die Integration überwacht einen Netz-Leistungssensor (z.B. Shelly 3EM) und schaltet Miner, die über die [hass-miner](https://github.com/tntvlad/hass-miner) Integration eingebunden sind, in einer konfigurierbaren Prioritätsreihenfolge ein und aus — je nachdem wie viel Überschussstrom verfügbar ist.
+Die Integration überwacht einen Netz-Leistungssensor (z.B. Shelly 3EM) und schaltet Miner in einer konfigurierbaren Prioritätsreihenfolge ein und aus — je nachdem wie viel Überschussstrom verfügbar ist. Miner können sowohl über die [hass-miner](https://github.com/tntvlad/hass-miner) Integration als auch als beliebige Switch-Entitäten (z.B. Smart Plugs, Shelly) eingebunden werden.
 
 ### Funktionsweise
 
@@ -23,8 +23,8 @@ Die Integration überwacht einen Netz-Leistungssensor (z.B. Shelly 3EM) und scha
 ### Voraussetzungen
 
 - Home Assistant 2026.4 oder neuer
-- [hass-miner](https://github.com/tntvlad/hass-miner) Integration mit mindestens einem konfigurierten Miner
 - Netz-Leistungssensor mit Vorzeichen (negativ = Einspeisung, positiv = Bezug) — z.B. Shelly Pro 3EM
+- Mindestens eine Switch-Entität die einen Miner repräsentiert — entweder über [hass-miner](https://github.com/tntvlad/hass-miner) oder einen beliebigen Smart Plug / Schalter
 
 ### Installation
 
@@ -63,13 +63,17 @@ Die Integration wird vollständig über die HA-Benutzeroberfläche konfiguriert:
 | Akku-SOC-Sensor | Sensor mit Ladestand in % — leer lassen um SOC-Schutz zu deaktivieren (optional) | — |
 | Mindest-SOC (%) | Alle Miner werden abgeschaltet wenn der Ladestand diesen Wert unterschreitet | 20 % |
 
-**Schritt 2 — Miner auswählen**
+**Schritt 2 — hass-miner Switches auswählen** *(wird übersprungen wenn keine vorhanden)*
 
-Die Integration erkennt automatisch alle über hass-miner eingebundenen Miner und zeigt sie zur Auswahl an.
+Die Integration erkennt automatisch alle über hass-miner eingebundenen Miner und zeigt sie zur Auswahl an. Für erkannte Miner wird die Leistung direkt aus dem `power_limit`-Sensor vorausgefüllt.
 
-**Schritt 3 — Miner konfigurieren**
+**Schritt 3 — Weitere Miner hinzufügen** *(optional)*
 
-Für jeden ausgewählten Miner werden Name (vorausgefüllt), Leistungsaufnahme in Watt und Priorität (1 = höchste) festgelegt.
+Über einen HA-Entity-Picker können beliebige Switch-Entitäten als Miner hinzugefügt werden, die nicht über hass-miner eingebunden sind — z.B. Smart Plugs (Shelly, TP-Link Kasa, etc.). Das Feld kann leer gelassen werden, wenn nur hass-miner Miner verwendet werden.
+
+**Schritt 4 — Miner konfigurieren**
+
+Für jeden ausgewählten Miner werden Name (vorausgefüllt), Leistungsaufnahme in Watt und Priorität (1 = höchste) festgelegt. Manuell hinzugefügte Switches starten mit 1000 W als Standardwert.
 
 ### Exponierte Entitäten
 
@@ -135,7 +139,7 @@ python -m pytest tests/ -v
 
 A Home Assistant custom integration for automatic Bitcoin miner control based on PV surplus power.
 
-The integration monitors a grid power sensor (e.g. Shelly 3EM) and switches miners — integrated via [hass-miner](https://github.com/tntvlad/hass-miner) — on and off in a configurable priority order depending on how much surplus power is available.
+The integration monitors a grid power sensor (e.g. Shelly 3EM) and switches miners on and off in a configurable priority order depending on how much surplus power is available. Miners can be added via the [hass-miner](https://github.com/tntvlad/hass-miner) integration or as any switch entity (e.g. smart plugs, Shelly outlets).
 
 ### How it works
 
@@ -150,8 +154,8 @@ The integration monitors a grid power sensor (e.g. Shelly 3EM) and switches mine
 ### Requirements
 
 - Home Assistant 2026.4 or newer
-- [hass-miner](https://github.com/tntvlad/hass-miner) integration with at least one configured miner
 - Signed grid power sensor (negative = export, positive = import) — e.g. Shelly Pro 3EM
+- At least one switch entity representing a miner — either via [hass-miner](https://github.com/tntvlad/hass-miner) or any smart plug / switch
 
 ### Installation
 
@@ -190,13 +194,17 @@ The integration is configured entirely through the HA UI:
 | Battery SOC sensor | Sensor reporting state of charge in % — leave empty to disable SOC protection (optional) | — |
 | Minimum SOC (%) | All miners are shut down if SOC drops below this value | 20 % |
 
-**Step 2 — Select miners**
+**Step 2 — Select hass-miner switches** *(skipped if none found)*
 
-The integration automatically discovers all miners registered via hass-miner and presents them for selection.
+The integration automatically discovers all miners registered via hass-miner and presents them for selection. Power consumption is pre-filled from the `power_limit` sensor where available.
 
-**Step 3 — Configure miners**
+**Step 3 — Add additional miners** *(optional)*
 
-For each selected miner, set the name (pre-filled), power consumption in watts, and priority (1 = highest).
+An HA entity picker lets you add any switch entity as a miner — e.g. smart plugs (Shelly, TP-Link Kasa, etc.). Leave the field empty if you only use hass-miner miners.
+
+**Step 4 — Configure miners**
+
+For each selected miner, set the name (pre-filled), power consumption in watts, and priority (1 = highest). Manually added switches default to 1000 W.
 
 ### Exposed entities
 

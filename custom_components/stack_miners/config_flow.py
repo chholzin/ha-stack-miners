@@ -136,6 +136,16 @@ def _select_schema(options: list[dict], defaults: list[str] | None = None) -> vo
     )
 
 
+def _manual_miners_schema(defaults: list[str] | None = None) -> vol.Schema:
+    return vol.Schema(
+        {
+            vol.Optional("manual_miners", default=defaults or []): EntitySelector(
+                EntitySelectorConfig(domain="switch", multiple=True)
+            ),
+        }
+    )
+
+
 def _miner_schema(name_default: str, idx: int, total: int, power_default: int = DEFAULT_MINER_POWER_W) -> vol.Schema:
     return vol.Schema(
         {
@@ -175,32 +185,55 @@ class StackMinersConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self.async_step_select_miners()
         return self.async_show_form(step_id="user", data_schema=_settings_schema({}))
 
-    # Step 2: select which discovered miners to include
+    # Step 2: select which discovered hass-miner switches to include
     async def async_step_select_miners(self, user_input: dict | None = None):
         discovered = _discover_miner_switches(self.hass)
-        if not discovered:
-            return self.async_abort(reason="no_miners_found")
-
-        # Store full miner info (name + power_w from power_limit sensor)
         self._discovered = {m["entity_id"]: m for m in discovered}
+
+        if not discovered:
+            self._selected_ids = []
+            return await self.async_step_add_manual_miners()
+
         options = [{"value": m["entity_id"], "label": m["name"]} for m in discovered]
 
         if user_input is not None:
             self._selected_ids = user_input["selected_miners"]
-            if not self._selected_ids:
-                return self.async_show_form(
-                    step_id="select_miners",
-                    data_schema=_select_schema(options),
-                    errors={"base": "no_miners_selected"},
-                )
-            self._pending = list(self._selected_ids)
-            self._miners = []
-            return await self.async_step_configure_miner()
+            return await self.async_step_add_manual_miners()
 
         return self.async_show_form(
             step_id="select_miners",
             data_schema=_select_schema(options),
             description_placeholders={"count": str(len(discovered))},
+        )
+
+    # Step 3: optionally add further switch entities as miners
+    async def async_step_add_manual_miners(self, user_input: dict | None = None):
+        if user_input is not None:
+            manual_ids: list[str] = user_input.get("manual_miners", [])
+            for eid in manual_ids:
+                if eid not in self._discovered:
+                    self._discovered[eid] = {"entity_id": eid, "name": eid, "power_w": DEFAULT_MINER_POWER_W}
+
+            all_ids = list(self._selected_ids)
+            for eid in manual_ids:
+                if eid not in all_ids:
+                    all_ids.append(eid)
+
+            if not all_ids:
+                return self.async_show_form(
+                    step_id="add_manual_miners",
+                    data_schema=_manual_miners_schema(),
+                    errors={"base": "no_miners_selected"},
+                )
+
+            self._selected_ids = all_ids
+            self._pending = list(all_ids)
+            self._miners = []
+            return await self.async_step_configure_miner()
+
+        return self.async_show_form(
+            step_id="add_manual_miners",
+            data_schema=_manual_miners_schema(),
         )
 
     # Step 3: configure each miner (name, power, priority)
@@ -264,28 +297,58 @@ class StackMinersOptionsFlow(config_entries.OptionsFlow):
         existing_ids = [m[CONF_MINER_ENTITY_ID] for m in existing.get(CONF_MINERS, [])]
 
         discovered = _discover_miner_switches(self.hass)
-        if not discovered:
-            return self.async_abort(reason="no_miners_found")
-
         self._discovered = {m["entity_id"]: m for m in discovered}
+
+        if not discovered:
+            self._selected_ids = []
+            return await self.async_step_add_manual_miners()
+
         options = [{"value": m["entity_id"], "label": m["name"]} for m in discovered]
+        # Pre-select only IDs that are still in hass-miner discovery
+        hass_miner_existing = [eid for eid in existing_ids if eid in self._discovered]
 
         if user_input is not None:
             self._selected_ids = user_input["selected_miners"]
-            if not self._selected_ids:
+            return await self.async_step_add_manual_miners()
+
+        return self.async_show_form(
+            step_id="select_miners",
+            data_schema=_select_schema(options, hass_miner_existing),
+            description_placeholders={"count": str(len(discovered))},
+        )
+
+    async def async_step_add_manual_miners(self, user_input: dict | None = None):
+        existing = {**self.config_entry.data, **self.config_entry.options}
+        existing_miners = {m[CONF_MINER_ENTITY_ID]: m for m in existing.get(CONF_MINERS, [])}
+        # Pre-populate with previously saved miners that are NOT from hass-miner discovery
+        existing_manual_ids = [eid for eid in existing_miners if eid not in self._discovered]
+
+        if user_input is not None:
+            manual_ids: list[str] = user_input.get("manual_miners", [])
+            for eid in manual_ids:
+                if eid not in self._discovered:
+                    self._discovered[eid] = {"entity_id": eid, "name": eid, "power_w": DEFAULT_MINER_POWER_W}
+
+            all_ids = list(self._selected_ids)
+            for eid in manual_ids:
+                if eid not in all_ids:
+                    all_ids.append(eid)
+
+            if not all_ids:
                 return self.async_show_form(
-                    step_id="select_miners",
-                    data_schema=_select_schema(options, existing_ids),
+                    step_id="add_manual_miners",
+                    data_schema=_manual_miners_schema(existing_manual_ids),
                     errors={"base": "no_miners_selected"},
                 )
-            self._pending = list(self._selected_ids)
+
+            self._selected_ids = all_ids
+            self._pending = list(all_ids)
             self._miners = []
             return await self.async_step_configure_miner()
 
         return self.async_show_form(
-            step_id="select_miners",
-            data_schema=_select_schema(options, existing_ids),
-            description_placeholders={"count": str(len(discovered))},
+            step_id="add_manual_miners",
+            data_schema=_manual_miners_schema(existing_manual_ids),
         )
 
     async def async_step_configure_miner(self, user_input: dict | None = None):

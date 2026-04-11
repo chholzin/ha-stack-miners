@@ -32,6 +32,16 @@
           "selected_miners": "Miners"
         }
       },
+      "add_manual_miners": {
+        "title": "Add Additional Miners (optional)",
+        "description": "Add any switch entities as miners that are not managed by hass-miner (e.g. smart plugs, Shelly, etc.).",
+        "data": {
+          "manual_miners": "Additional miners (switches)"
+        },
+        "data_description": {
+          "manual_miners": "Select one or more switches — power and priority are configured in the next step"
+        }
+      },
       "configure_miner": {
         "title": "Configure Miner {count}/{total}",
         "description": "Entity: {entity_id}",
@@ -48,7 +58,6 @@
     },
     "abort": {
       "already_configured": "Stack Miners is already configured",
-      "no_miners_found": "No miners found via hass-miner. Please set up miners via the hass-miner integration first.",
       "no_miners_selected": "At least one miner must be selected"
     },
     "error": {
@@ -77,6 +86,16 @@
           "selected_miners": "Miners"
         }
       },
+      "add_manual_miners": {
+        "title": "Add Additional Miners (optional)",
+        "description": "Add any switch entities as miners that are not managed by hass-miner (e.g. smart plugs, Shelly, etc.).",
+        "data": {
+          "manual_miners": "Additional miners (switches)"
+        },
+        "data_description": {
+          "manual_miners": "Select one or more switches — power and priority are configured in the next step"
+        }
+      },
       "configure_miner": {
         "title": "Configure Miner {count}/{total}",
         "description": "Entity: {entity_id}",
@@ -87,9 +106,7 @@
         }
       }
     },
-    "abort": {
-      "no_miners_found": "No miners found via hass-miner"
-    },
+    "abort": {},
     "error": {
       "no_miners_selected": "Please select at least one miner"
     }
